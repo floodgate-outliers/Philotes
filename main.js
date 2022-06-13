@@ -18,7 +18,8 @@ let interval = 7
 let matchingJob = getCronJob(interval)
 let groupSize = 2
 let roles = []
-const guild = client.guilds.cache.get(config.guildID)
+// Wait to load guild and roles until bot is ready
+let guild
 
 function getCronJob() {
     return new cron.CronJob(`*/${interval} * * * * *`, async () => {
@@ -54,67 +55,111 @@ async function getParticipatingUserIDs() {
     return
 }
 
+/**
+ * Get all users' historical pairs
+ *
+ * @param {string[]} userIDs
+ * @returns {{[userID: string]: Set}} Object with data on each user's previous pairs
+ */
 async function getHistoricalPairs(userIDs) {
     // To Do
     // const stmt = sql.prepare('SELECT * FROM pairs WHERE user1_id = ?').get(userId);
     return
 }
 
+/**
+ * Fischer-Yates Shuffle Algorithm
+ *
+ * @param {[Array]} array
+ * @returns {Array} Shuffled array
+ */
+function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        const temp = array[i]
+        array[i] = array[j]
+        array[j] = temp
+    }
+    return array
+}
+
+/**
+ * Constructs new groups based on historical pairs
+ * https://lifeat.tails.com/how-we-made-bagelbot/
+ *
+ * @returns {[string[]]} New groups of the form [[user_1_ID, user_2_ID], [user_3_ID, user_4_ID], ...]
+ */
 async function getNewGroups() {
     let participatingUserIDs = await getParticipatingUserIDs()
     let historicalPairs = await getHistoricalPairs(participatingUserIDs)
-    return
+    // Can use simple data below for basic testing until getParticipatingUserIDs() is implemented
+    // let participatingUserIDs = ['0', '1', '2', '3', '4', '5']
+    // let historicalPairs = {
+    //     2: new Set('3'),
+    //     3: new Set('2'),
+    // }
+    let newGroups = []
+    // Convert set to an array to allow for shuffling
+    let unpairedUserIDs = Array.from(participatingUserIDs)
+    unpairedUserIDs = shuffle(unpairedUserIDs)
+    // Keep track of users that have been paired
+    const pairedUsersStatus = new Array(unpairedUserIDs.length).fill(false)
+    for (let i = 0; i < unpairedUserIDs.length; i++) {
+        if (pairedUsersStatus[i]) {
+            // The user has been paired already
+            continue
+        }
+
+        // This is the user for which we will try to find a pair
+        const userID = unpairedUserIDs[i]
+
+        // Get all other users that are unpaired
+        const filteredUnpairedIDs = unpairedUserIDs.filter(
+            (id, index) => id !== userID && !pairedUsersStatus[index]
+        )
+
+        // Keep track of the ID to pair the user with (either fall-back or successful pairing of users that have not met)
+        let newPairingID
+
+        // If there are only 2 or 3 people left, there exists only one possible pairing
+        if (
+            filteredUnpairedIDs.length === 2 ||
+            filteredUnpairedIDs.length === 1
+        ) {
+            newGroups.push([userID, ...filteredUnpairedIDs])
+            break
+        }
+
+        // Fall-back pairing
+        newPairingID = filteredUnpairedIDs[0]
+
+        // User's previous pairs
+        const userHistoricalPairs = historicalPairs[userID]
+        // Attempt to pair users who have not met
+        for (const potentialPairingID of filteredUnpairedIDs) {
+            // Check to see if the users have met before
+            if (
+                userHistoricalPairs &&
+                userHistoricalPairs.has(potentialPairingID)
+            ) {
+                continue
+            } else {
+                // The pair has not met yet so assign them together
+                newPairingID = potentialPairingID
+                break
+            }
+        }
+        newGroups.push([userID, newPairingID])
+
+        // Mark the users as paired
+        pairedUsersStatus[i] = true
+        pairedUsersStatus[unpairedUserIDs.indexOf(newPairingID)] = true
+    }
+
+    return newGroups
 
     // client.setScore = sql.prepare("INSERT OR REPLACE INTO pairs (id, user1_id, user2_id) VALUES (@id, @user1_id, @user2_id);");
     // => write to SQL lite db
-
-    // console.log(row.firstName, row.lastName, row.email);
-
-    // #### ALGO in Python #####
-    // user_history = {}
-    // for pair in get_pairs():
-    // 		user = pair[0]
-    // 		past_partner = pair[1]
-    // 		if user in user_history:
-    // 				user_history[user].append(past_partner)
-    // 		else:
-    // 				user_history[user] = [past_partner]
-
-    // # build pairing groups
-    // groups = []
-    // for user in users:
-    // 		if user == False:
-    // 				continue
-    // 		potential_partners = users.copy()
-    // 		potential_partners.remove(user)
-    // 		sanitized_potential_partners = list(filter(None, potential_partners))
-
-    // 		# create a fall-back pairing
-    // 		try:
-    // 				pair_with = next(u for u in sanitized_potential_partners if u)
-
-    // 		# we're at the end and there's an odd number of users
-    // 		# create a trio and stop
-    // 		except StopIteration:
-    // 				groups[len(groups)-1].append(user)
-    // 				break
-
-    // 		# attempt to match users who haven't met
-    // 		for person in sanitized_potential_partners:
-    // 				if person in user_history.get(user, []):
-    // 						continue
-    // 				else:
-    // 						pair_with = person
-    // 						break
-
-    // 		# create a group with the pair and bagelbot
-    // 		groups.append([user, pair_with])
-
-    // 		# take them out of the potential pairing pool
-    // 		users[users.index(user)] = False
-    // 		users[users.index(pair_with)] = False
-
-    // return groups
 }
 
 client.on('ready', () => {
@@ -136,6 +181,8 @@ client.on('ready', () => {
         sql.pragma('synchronous = 1')
         sql.pragma('journal_mode = wal')
     }
+    // Load guild once bot is ready
+    guild = client.guilds.cache.get(config.guildID)
 })
 
 client.on('messageCreate', (message) => {
