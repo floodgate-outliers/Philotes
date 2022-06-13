@@ -7,7 +7,6 @@
     "start": "nodemon ./main.js"
   },
   "dependencies": {
-    "@types/node": "^17.0.42",
     "better-sqlite3": "^7.5.3",
     "cron": "^2.0.0",
     "discord.js": "^13.8.0",
