@@ -22,8 +22,9 @@ let roles = []
 let guild
 
 function getCronJob() {
+    // return cron job with interval in seconds
     return new cron.CronJob(`*/${interval} * * * * *`, async () => {
-        // seconds
+        // return cron job with interval in days
         // return new cron.CronJob(`* * * */${interval} * *`, () => { // days
         let channel = client.channels.cache.get(
             config.botCommunicationChannelID
