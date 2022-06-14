@@ -57,15 +57,61 @@ async function getParticipatingUserIDs() {
 }
 
 /**
+ * Store historical pairs in db
+ *
+ * @param {[[]]} pairs
+ */
+function setHistoricalPairs(pairs) {
+    const stmt = sql.prepare(
+        'INSERT INTO pairs (user1_id, user2_id) VALUES (@user1_id, @user2_id);'
+    )
+    const insertPairs = sql.transaction((pairs) => {
+        pairs.forEach((p) => {
+            values = { user1_id: p[0], user2_id: p[1] }
+            stmt.run(values)
+        })
+    })
+
+    const insertPairsReversed = sql.transaction((pairs) => {
+        pairs.forEach((p) => {
+            values = { user1_id: p[1], user2_id: p[0] }
+            stmt.run(values)
+        })
+    })
+
+    insertPairs(pairs)
+    insertPairsReversed(pairs)
+}
+
+/**
+ * Get all users' historical pairs
+ *
+ * @returns {[]} Array of all rows in the table pairs
+ */
+function getAllData() {
+    let smt = sql.prepare('SELECT * FROM pairs;')
+    let rows = smt.all()
+    return rows
+}
+
+/**
  * Get all users' historical pairs
  *
  * @param {string[]} userIDs
  * @returns {{[userID: string]: Set}} Object with data on each user's previous pairs
  */
-async function getHistoricalPairs(userIDs) {
-    // To Do
-    // const stmt = sql.prepare('SELECT * FROM pairs WHERE user1_id = ?').get(userId);
-    return
+function getHistoricalPairs(userIDs) {
+    const stmt = sql.prepare('SELECT * FROM pairs WHERE user1_id = ?')
+    let pairs = {}
+
+    userIDs.forEach((userID) => {
+        pairs[userID] = new Set()
+        let tmpPairs = stmt.all(userID)
+        tmpPairs.forEach((tmpPair) => {
+            pairs[userID].add(tmpPair['user2_id'])
+        })
+    })
+    return pairs
 }
 
 /**
@@ -175,10 +221,10 @@ client.on('ready', () => {
     if (!table['count(*)']) {
         // If the table isn't there, create it and setup the database correctly.
         sql.prepare(
-            'CREATE TABLE pairs (id TEXT PRIMARY KEY, user1_id TEXT, user2_id TEXT);'
+            'CREATE TABLE pairs (id INTEGER PRIMARY KEY AUTOINCREMENT, user1_id TEXT, user2_id TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);'
         ).run()
         // Ensure that the "id" row is always unique and indexed.
-        sql.prepare('CREATE UNIQUE INDEX idx_users ON pairs (user1_id);').run()
+        sql.prepare('CREATE INDEX idx_users ON pairs (user1_id);').run()
         sql.pragma('synchronous = 1')
         sql.pragma('journal_mode = wal')
     }
@@ -257,6 +303,20 @@ client.on('messageCreate', (message) => {
     if (command === 'setGroupSize') {
         groupSize = args[0]
         message.reply(`New group size: ${groupSize}`)
+    }
+
+    if (command === 'testDB') {
+        let historicalPairs = [
+            ['1', '2'],
+            ['1', '3'],
+            ['1', '4'],
+            ['1', '5'],
+        ]
+        setHistoricalPairs(historicalPairs)
+        let pairs = getHistoricalPairs(['2'])
+        console.log(pairs)
+        let matches = pairs['2']
+        message.reply(`User 2 was matched with: ${Array.from(matches)}`)
     }
 })
 
