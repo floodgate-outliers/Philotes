@@ -2,5 +2,6 @@
     "token": "XXXX",
     "prefix": "/",
     "botCommunicationChannelID": "985776854222913536",
-    "guildID": "985665600758108262"
+    "guildID": "985665600758108262",
+    "matchingChannelName": "matched"
 }
