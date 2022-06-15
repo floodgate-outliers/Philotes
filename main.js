@@ -1,5 +1,5 @@
 const cron = require('cron')
-const { Client, Intents } = require('discord.js')
+const { Client, Intents, Permissions } = require('discord.js')
 const config = require('./config.json')
 
 const SQLite = require('better-sqlite3')
@@ -210,7 +210,39 @@ async function getNewGroups() {
     // => write to SQL lite db
 }
 
-client.on('ready', () => {
+/**
+ * Create private channels with the paired users
+ *
+ * @param {[string[]]} userIDGroups Array of grouped User ID's of the form [[user_1_ID, user_2_ID], [user_3_ID, user_4_ID], ...]
+ * @returns {void}
+ */
+async function createPrivateChannels(userIDGroups) {
+    if (!guild) return
+    // Iterate over userID pairings and create DM group
+    for (const userIDPair of userIDGroups) {
+        // Construct permission overwrite for each user in the pair
+        const userPermissionOverWrites = userIDPair.map((userID) => {
+            return {
+                type: 'member',
+                id: userID,
+                allow: Permissions.ALL,
+            }
+        })
+        // Create private channel
+        await guild.channels.create('donut private channel', {
+            permissionOverwrites: [
+                {
+                    id: guild.roles.everyone,
+                    deny: Permissions.ALL,
+                },
+                // Add the overwrites for the pair of users
+                ...userPermissionOverWrites,
+            ],
+        })
+    }
+}
+
+client.on('ready', async () => {
     console.log(`Logged in as ${client.user.tag}!`)
 
     // Check if the table "pairs" exists.
