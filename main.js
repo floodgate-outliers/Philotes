@@ -26,7 +26,11 @@ function getCronJob() {
     return new cron.CronJob(`*/${interval} * * * * *`, async () => {
         // return cron job with interval in days
         // return new cron.CronJob(`* * * */${interval} * *`, () => { // days
-        await getNewGroups()
+        let groups = await getNewGroups()
+        console.log('Groups: ')
+        console.log(groups)
+        deleteMatchingChannels()
+        createPrivateChannels(groups)
     })
 }
 
@@ -316,7 +320,7 @@ client.on('messageCreate', async (message) => {
         )
         message.channel.send('/status => get current status of the bot')
         message.channel.send('/pause => pause bot')
-        message.channel.send('/resume => resume or start bot')
+        message.channel.send('/resume or /start => resume or start bot')
         message.channel.send('/alive => check if bot is still alive')
     }
 
@@ -333,7 +337,7 @@ client.on('messageCreate', async (message) => {
         matchingJob.stop()
     }
 
-    if (command === 'resume') {
+    if (command === 'resume' || command === 'start') {
         status = 'active'
         message.channel.send(`New status: ${status}`)
         matchingJob.start()
@@ -347,10 +351,11 @@ client.on('messageCreate', async (message) => {
     if (command === 'setInterval') {
         let newInterval = args[0]
         interval = newInterval
+        matchingJob.stop()
         matchingJob = getCronJob()
         matchingJob.start()
         message.reply(`New interval: ${args}`)
-        message.reply('Matching active')
+        message.reply('Matching restarted.')
     }
 
     if (command === 'setGroupSize') {
