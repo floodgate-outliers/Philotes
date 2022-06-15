@@ -112,6 +112,19 @@ function getHistoricalPairs(userIDs) {
 }
 
 /**
+ * Helper function to delete all private channels
+ */
+async function deleteMatchingChannels() {
+    let channels = client.channels.cache.filter(
+        (channel) => channel.name === config.matchingChannelName
+    )
+    channels = Array.from(channels.values())
+    for (let i = 0; i < channels.length; i++) {
+        channels[i].delete()
+    }
+}
+
+/**
  * Fischer-Yates Shuffle Algorithm
  *
  * @param {[Array]} array
@@ -226,7 +239,7 @@ async function createPrivateChannels(userIDGroups) {
             }
         })
         // Create private channel
-        let channel = await guild.channels.create('donut matching', {
+        let channel = await guild.channels.create(config.matchingChannelName, {
             permissionOverwrites: [
                 {
                     id: guild.roles.everyone,
@@ -345,6 +358,10 @@ client.on('messageCreate', async (message) => {
         message.reply(`New group size: ${groupSize}`)
     }
 
+    if (command === 'deleteChannels') {
+        deleteMatchingChannels()
+    }
+
     if (command === 'testDB') {
         let historicalPairs = [
             ['1', '2'],
@@ -354,7 +371,6 @@ client.on('messageCreate', async (message) => {
         ]
         setHistoricalPairs(historicalPairs)
         let pairs = getHistoricalPairs(['2'])
-        console.log(pairs)
         let matches = pairs['2']
         message.reply(`User 2 was matched with: ${Array.from(matches)}`)
     }
@@ -364,6 +380,7 @@ client.on('messageCreate', async (message) => {
         let groups = await getNewGroups()
         console.log('Groups: ')
         console.log(groups)
+        deleteMatchingChannels()
         createPrivateChannels(groups)
     }
 })
