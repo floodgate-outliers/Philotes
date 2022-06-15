@@ -22,13 +22,15 @@ let roles = []
 let guild
 
 function getCronJob() {
+    // return cron job with interval in seconds
     return new cron.CronJob(`*/${interval} * * * * *`, async () => {
-        // seconds
+        // return cron job with interval in days
         // return new cron.CronJob(`* * * */${interval} * *`, () => { // days
-        let channel = client.channels.cache.get(
-            config.botCommunicationChannelID
-        )
-        await getNewGroups()
+        let groups = await getNewGroups()
+        console.log('Groups: ')
+        console.log(groups)
+        deleteMatchingChannels()
+        createPrivateChannels(groups)
     })
 }
 
@@ -56,15 +58,74 @@ async function getParticipatingUserIDs() {
 }
 
 /**
+ * Store historical pairs in db
+ *
+ * @param {[[]]} pairs
+ */
+function setHistoricalPairs(pairs) {
+    const stmt = sql.prepare(
+        'INSERT INTO pairs (user1_id, user2_id) VALUES (@user1_id, @user2_id);'
+    )
+    const insertPairs = sql.transaction((pairs) => {
+        pairs.forEach((p) => {
+            values = { user1_id: p[0], user2_id: p[1] }
+            stmt.run(values)
+        })
+    })
+
+    const insertPairsReversed = sql.transaction((pairs) => {
+        pairs.forEach((p) => {
+            values = { user1_id: p[1], user2_id: p[0] }
+            stmt.run(values)
+        })
+    })
+
+    insertPairs(pairs)
+    insertPairsReversed(pairs)
+}
+
+/**
+ * Get all users' historical pairs
+ *
+ * @returns {[]} Array of all rows in the table pairs
+ */
+function getAllData() {
+    let smt = sql.prepare('SELECT * FROM pairs;')
+    let rows = smt.all()
+    return rows
+}
+
+/**
  * Get all users' historical pairs
  *
  * @param {string[]} userIDs
  * @returns {{[userID: string]: Set}} Object with data on each user's previous pairs
  */
-async function getHistoricalPairs(userIDs) {
-    // To Do
-    // const stmt = sql.prepare('SELECT * FROM pairs WHERE user1_id = ?').get(userId);
-    return
+function getHistoricalPairs(userIDs) {
+    const stmt = sql.prepare('SELECT * FROM pairs WHERE user1_id = ?')
+    let pairs = {}
+
+    userIDs.forEach((userID) => {
+        pairs[userID] = new Set()
+        let tmpPairs = stmt.all(userID)
+        tmpPairs.forEach((tmpPair) => {
+            pairs[userID].add(tmpPair['user2_id'])
+        })
+    })
+    return pairs
+}
+
+/**
+ * Helper function to delete all private channels
+ */
+async function deleteMatchingChannels() {
+    let channels = client.channels.cache.filter(
+        (channel) => channel.name === config.matchingChannelName
+    )
+    channels = Array.from(channels.values())
+    for (let i = 0; i < channels.length; i++) {
+        channels[i].delete()
+    }
 }
 
 /**
@@ -91,7 +152,8 @@ function shuffle(array) {
  */
 async function getNewGroups() {
     let participatingUserIDs = await getParticipatingUserIDs()
-    let historicalPairs = await getHistoricalPairs(participatingUserIDs)
+    console.log(participatingUserIDs)
+    let historicalPairs = getHistoricalPairs(participatingUserIDs)
     // Can use simple data below for basic testing until getParticipatingUserIDs() is implemented
     // let participatingUserIDs = ['0', '1', '2', '3', '4', '5']
     // let historicalPairs = {
@@ -181,7 +243,7 @@ async function createPrivateChannels(userIDGroups) {
             }
         })
         // Create private channel
-        await guild.channels.create('donut private channel', {
+        let channel = await guild.channels.create(config.matchingChannelName, {
             permissionOverwrites: [
                 {
                     id: guild.roles.everyone,
@@ -191,6 +253,13 @@ async function createPrivateChannels(userIDGroups) {
                 ...userPermissionOverWrites,
             ],
         })
+        console.log(channel.channels)
+        client.channels.cache.get(channel.id).send(`
+        Hello there,
+You have been matched!
+Schedule a call go for a walk or do whatever else.
+The channel will automatically closed after ${interval} days.
+        `)
     }
 }
 
@@ -206,10 +275,10 @@ client.on('ready', async () => {
     if (!table['count(*)']) {
         // If the table isn't there, create it and setup the database correctly.
         sql.prepare(
-            'CREATE TABLE pairs (id TEXT PRIMARY KEY, user1_id TEXT, user2_id TEXT);'
+            'CREATE TABLE pairs (id INTEGER PRIMARY KEY AUTOINCREMENT, user1_id TEXT, user2_id TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);'
         ).run()
         // Ensure that the "id" row is always unique and indexed.
-        sql.prepare('CREATE UNIQUE INDEX idx_users ON pairs (user1_id);').run()
+        sql.prepare('CREATE INDEX idx_users ON pairs (user1_id);').run()
         sql.pragma('synchronous = 1')
         sql.pragma('journal_mode = wal')
     }
@@ -217,7 +286,7 @@ client.on('ready', async () => {
     guild = client.guilds.cache.get(config.guildID)
 })
 
-client.on('messageCreate', (message) => {
+client.on('messageCreate', async (message) => {
     // if the author is another bot OR the command is not in the bot communications channel OR the command doesn't start with the correct prefix => ignore
     if (
         message.author.bot ||
@@ -251,12 +320,15 @@ client.on('messageCreate', (message) => {
         )
         message.channel.send('/status => get current status of the bot')
         message.channel.send('/pause => pause bot')
-        message.channel.send('/resume => resume or start bot')
+        message.channel.send('/resume or /start => resume or start bot')
         message.channel.send('/alive => check if bot is still alive')
     }
 
     if (command === 'status') {
         message.channel.send(`Status: ${status}`)
+        message.channel.send(`Roles: ${roles}`)
+        message.channel.send(`Interval: ${interval}`)
+        message.channel.send(`GroupSize: ${groupSize}`)
     }
 
     if (command === 'pause') {
@@ -265,7 +337,7 @@ client.on('messageCreate', (message) => {
         matchingJob.stop()
     }
 
-    if (command === 'resume') {
+    if (command === 'resume' || command === 'start') {
         status = 'active'
         message.channel.send(`New status: ${status}`)
         matchingJob.start()
@@ -279,15 +351,42 @@ client.on('messageCreate', (message) => {
     if (command === 'setInterval') {
         let newInterval = args[0]
         interval = newInterval
+        matchingJob.stop()
         matchingJob = getCronJob()
         matchingJob.start()
         message.reply(`New interval: ${args}`)
-        message.reply('Matching active')
+        message.reply('Matching restarted.')
     }
 
     if (command === 'setGroupSize') {
         groupSize = args[0]
         message.reply(`New group size: ${groupSize}`)
+    }
+
+    if (command === 'deleteChannels') {
+        deleteMatchingChannels()
+    }
+
+    if (command === 'testDB') {
+        let historicalPairs = [
+            ['1', '2'],
+            ['1', '3'],
+            ['1', '4'],
+            ['1', '5'],
+        ]
+        setHistoricalPairs(historicalPairs)
+        let pairs = getHistoricalPairs(['2'])
+        let matches = pairs['2']
+        message.reply(`User 2 was matched with: ${Array.from(matches)}`)
+    }
+
+    if (command === 'testMatch') {
+        roles = ['Outlier']
+        let groups = await getNewGroups()
+        console.log('Groups: ')
+        console.log(groups)
+        deleteMatchingChannels()
+        createPrivateChannels(groups)
     }
 })
 
