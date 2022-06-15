@@ -26,9 +26,6 @@ function getCronJob() {
     return new cron.CronJob(`*/${interval} * * * * *`, async () => {
         // return cron job with interval in days
         // return new cron.CronJob(`* * * */${interval} * *`, () => { // days
-        let channel = client.channels.cache.get(
-            config.botCommunicationChannelID
-        )
         await getNewGroups()
     })
 }
@@ -229,7 +226,7 @@ async function createPrivateChannels(userIDGroups) {
             }
         })
         // Create private channel
-        await guild.channels.create('donut private channel', {
+        let channel = await guild.channels.create('donut matching', {
             permissionOverwrites: [
                 {
                     id: guild.roles.everyone,
@@ -239,6 +236,13 @@ async function createPrivateChannels(userIDGroups) {
                 ...userPermissionOverWrites,
             ],
         })
+        console.log(channel.channels)
+        client.channels.cache.get(channel.id).send(`
+        Hello there,
+You have been matched!
+Schedule a call go for a walk or do whatever else.
+The channel will automatically closed after ${interval} days.
+        `)
     }
 }
 
@@ -356,9 +360,11 @@ client.on('messageCreate', async (message) => {
     }
 
     if (command === 'testMatch') {
+        roles = ['Outlier']
         let groups = await getNewGroups()
         console.log('Groups: ')
         console.log(groups)
+        createPrivateChannels(groups)
     }
 })
 
