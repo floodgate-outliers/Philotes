@@ -138,7 +138,8 @@ function shuffle(array) {
  */
 async function getNewGroups() {
     let participatingUserIDs = await getParticipatingUserIDs()
-    let historicalPairs = await getHistoricalPairs(participatingUserIDs)
+    console.log(participatingUserIDs)
+    let historicalPairs = getHistoricalPairs(participatingUserIDs)
     // Can use simple data below for basic testing until getParticipatingUserIDs() is implemented
     // let participatingUserIDs = ['0', '1', '2', '3', '4', '5']
     // let historicalPairs = {
@@ -232,7 +233,7 @@ client.on('ready', () => {
     guild = client.guilds.cache.get(config.guildID)
 })
 
-client.on('messageCreate', (message) => {
+client.on('messageCreate', async (message) => {
     // if the author is another bot OR the command is not in the bot communications channel OR the command doesn't start with the correct prefix => ignore
     if (
         message.author.bot ||
@@ -272,6 +273,9 @@ client.on('messageCreate', (message) => {
 
     if (command === 'status') {
         message.channel.send(`Status: ${status}`)
+        message.channel.send(`Roles: ${roles}`)
+        message.channel.send(`Interval: ${interval}`)
+        message.channel.send(`GroupSize: ${groupSize}`)
     }
 
     if (command === 'pause') {
@@ -317,6 +321,12 @@ client.on('messageCreate', (message) => {
         console.log(pairs)
         let matches = pairs['2']
         message.reply(`User 2 was matched with: ${Array.from(matches)}`)
+    }
+
+    if (command === 'testMatch') {
+        let groups = await getNewGroups()
+        console.log('Groups: ')
+        console.log(groups)
     }
 })
 
