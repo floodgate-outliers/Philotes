@@ -1,3 +1,4 @@
+require('dotenv').config()
 const cron = require('cron')
 const { Client, Intents, Permissions } = require('discord.js')
 const config = require('./config.json')
@@ -378,4 +379,4 @@ client.on('messageCreate', async (message) => {
     }
 })
 
-client.login(config.token)
+client.login(process.env.TOKEN)
