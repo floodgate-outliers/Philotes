@@ -24,9 +24,9 @@ let guild
 
 function getCronJob() {
     // return cron job with interval in seconds
-    // return new cron.CronJob(`*/${interval} * * * * *`, async () => {
-    // return cron job with interval in days
-    return new cron.CronJob(`* * * */${interval} * *`, async () => {
+    return new cron.CronJob(`*/${interval} * * * * *`, async () => {
+        // return cron job with interval in days
+        // return new cron.CronJob(`* * * */${interval} * *`, async () => {
         let groups = await getNewGroups()
         console.log('Groups: ')
         console.log(groups)
