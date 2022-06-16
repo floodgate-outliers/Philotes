@@ -30,8 +30,8 @@ function getCronJob() {
         let groups = await getNewGroups()
         console.log('Groups: ')
         console.log(groups)
-        // deleteMatchingChannels()
-        // createPrivateChannels(groups)
+        deleteMatchingChannels()
+        createPrivateChannels(groups)
     })
 }
 
