@@ -23,14 +23,14 @@ let guild
 
 function getCronJob() {
     // return cron job with interval in seconds
-    return new cron.CronJob(`*/${interval} * * * * *`, async () => {
-        // return cron job with interval in days
-        // return new cron.CronJob(`* * * */${interval} * *`, () => { // days
+    // return new cron.CronJob(`*/${interval} * * * * *`, async () => {
+    // return cron job with interval in days
+    return new cron.CronJob(`* * * */${interval} * *`, async () => {
         let groups = await getNewGroups()
         console.log('Groups: ')
         console.log(groups)
-        deleteMatchingChannels()
-        createPrivateChannels(groups)
+        // deleteMatchingChannels()
+        // createPrivateChannels(groups)
     })
 }
 
@@ -257,8 +257,8 @@ async function createPrivateChannels(userIDGroups) {
         client.channels.cache.get(channel.id).send(`
         Hello there,
 You have been matched!
-Schedule a call go for a walk or do whatever else.
-The channel will automatically closed after ${interval} days.
+Schedule a call, go for a walk or do whatever else.
+The channel will automatically be closed after ${interval} days.
         `)
     }
 }
@@ -296,8 +296,10 @@ client.on('messageCreate', async (message) => {
         return
 
     // extract command and arguments from message
-    const args = message.content.slice(config.prefix.length).trim().split(/ +/g)
-    const command = args.shift()
+    let input = message.content.slice(config.prefix.length).trim().split(/ +/g)
+    const command = input.shift()
+    const args = input.join(' ')
+    console.log(args)
 
     // log command and arg on console (for debugging)
     console.log('Command: ', command)
@@ -344,7 +346,7 @@ client.on('messageCreate', async (message) => {
     }
 
     if (command === 'setRoles') {
-        roles = args.slice(/ +/g)
+        roles = args.split(',')
         message.reply(`New Roles: ${roles}`)
     }
 
@@ -367,21 +369,7 @@ client.on('messageCreate', async (message) => {
         deleteMatchingChannels()
     }
 
-    if (command === 'testDB') {
-        let historicalPairs = [
-            ['1', '2'],
-            ['1', '3'],
-            ['1', '4'],
-            ['1', '5'],
-        ]
-        setHistoricalPairs(historicalPairs)
-        let pairs = getHistoricalPairs(['2'])
-        let matches = pairs['2']
-        message.reply(`User 2 was matched with: ${Array.from(matches)}`)
-    }
-
     if (command === 'testMatch') {
-        roles = ['Outlier']
         let groups = await getNewGroups()
         console.log('Groups: ')
         console.log(groups)
