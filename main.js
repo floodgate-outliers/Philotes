@@ -343,6 +343,13 @@ client.on('messageCreate', async (message) => {
     if (command === 'resume' || command === 'start') {
         status = 'active'
         message.channel.send(`New status: ${status}`)
+
+        let groups = await getNewGroups()
+        console.log('Groups: ')
+        console.log(groups)
+        deleteMatchingChannels()
+        createPrivateChannels(groups)
+
         matchingJob.start()
     }
 
