@@ -16,7 +16,7 @@ const client = new Client({
 
 let status = 'init'
 let interval = 7
-let matchingJob = getCronJob(interval)
+let matchingJob = getCronJob()
 let groupSize = 2
 let roles = []
 // Wait to load guild and roles until bot is ready
