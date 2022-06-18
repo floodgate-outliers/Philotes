@@ -254,8 +254,9 @@ async function createPrivateChannels(userIDGroups) {
             ],
         })
         console.log(channel.channels)
+        const userIDTag = userIDPair.map((userID) => `<@${userID}>`).join(' ')
         client.channels.cache.get(channel.id).send(`
-        Hello there,
+        Hey ${userIDTag} 👋,
 You have been matched!
 Schedule a call go for a walk or do whatever else.
 The channel will automatically closed after ${interval} days.
