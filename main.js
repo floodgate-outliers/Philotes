@@ -233,6 +233,15 @@ async function getNewGroups() {
  */
 async function createPrivateChannels(userIDGroups) {
     if (!guild) return
+    // Get the category to place the channel under
+    const channelCategory = guild.channels.cache.find(
+        (c) =>
+            c.type === 'GUILD_CATEGORY' &&
+            c.name === config.matchingCategoryName
+    )
+
+    if (!channelCategory) throw Error('Matching category not found in Guild')
+
     // Iterate over userID pairings and create DM group
     for (const userIDPair of userIDGroups) {
         // Construct permission overwrite for each user in the pair
@@ -245,6 +254,7 @@ async function createPrivateChannels(userIDGroups) {
         })
         // Create private channel
         let channel = await guild.channels.create(config.matchingChannelName, {
+            parent: channelCategory.id,
             permissionOverwrites: [
                 {
                     id: guild.roles.everyone,
@@ -255,8 +265,9 @@ async function createPrivateChannels(userIDGroups) {
             ],
         })
         console.log(channel.channels)
+        const userIDTag = userIDPair.map((userID) => `<@${userID}>`).join(' ')
         client.channels.cache.get(channel.id).send(`
-        Hello there,
+        Hey ${userIDTag} 👋,
 You have been matched!
 Schedule a call, go for a walk or do whatever else.
 The channel will automatically be closed after ${interval} days.
