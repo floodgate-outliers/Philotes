@@ -1,6 +1,7 @@
 historicalPairs.*
 node_modules
 config.json
+config.*.json
 
 # Logs
 logs
