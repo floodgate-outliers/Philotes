@@ -37,6 +37,7 @@ async function initDB() {
     console.log('Connected successfully to server: ', process.env.MONGO_URL)
     const db = dbClient.db(dbName)
     collection = db.collection('pairs')
+    console.log(collection)
 }
 initDB()
 
