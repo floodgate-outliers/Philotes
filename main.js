@@ -31,10 +31,10 @@ let guild
 let collection
 
 async function initDB() {
-    const dbName = 'outliers'
+    const dbName = 'outliers-db'
     const dbClient = new MongoClient(process.env.MONGO_URL)
     await dbClient.connect()
-    console.log('Connected successfully to server')
+    console.log('Connected successfully to server: ', process.env.MONGO_URL)
     const db = dbClient.db(dbName)
     collection = db.collection('pairs')
 }
