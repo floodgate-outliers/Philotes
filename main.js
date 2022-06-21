@@ -1,10 +1,17 @@
 require('dotenv').config()
 const cron = require('cron')
 const { Client, Intents, Permissions } = require('discord.js')
-const config = require('./config.json')
+const { MongoClient } = require('mongodb')
 
-const SQLite = require('better-sqlite3')
-const sql = new SQLite('./historicalPairs.sqlite')
+let config
+
+if (process.env.ENV == 'dev') {
+    config = require('./config_dev.json')
+    console.log('load dev config')
+} else {
+    config = require('./config.json')
+    console.log('load prod config')
+}
 
 const client = new Client({
     intents: [
@@ -21,15 +28,27 @@ let groupSize = 2
 let roles = []
 // Wait to load guild and roles until bot is ready
 let guild
+let collection
+
+async function initDB() {
+    const dbName = 'outliers'
+    const dbClient = new MongoClient(process.env.MONGO_URL)
+    await dbClient.connect()
+    console.log('Connected successfully to server')
+    const db = dbClient.db(dbName)
+    collection = db.collection('pairs')
+}
+initDB()
 
 function getCronJob() {
     // return cron job with interval in seconds
-    // return new cron.CronJob(`*/${interval} * * * * *`, async () => {
-    // return cron job with interval in days
-    return new cron.CronJob(`* * * */${interval} * *`, async () => {
+    return new cron.CronJob(`*/${interval} * * * * *`, async () => {
+        // return cron job with interval in days
+        // return new cron.CronJob(`* * * */${interval} * *`, async () => {
         let groups = await getNewGroups()
         console.log('Groups: ')
         console.log(groups)
+        setHistoricalPairs(groups)
         deleteMatchingChannels()
         createPrivateChannels(groups)
     })
@@ -64,36 +83,13 @@ async function getParticipatingUserIDs() {
  * @param {[[]]} pairs
  */
 function setHistoricalPairs(pairs) {
-    const stmt = sql.prepare(
-        'INSERT INTO pairs (user1_id, user2_id) VALUES (@user1_id, @user2_id);'
-    )
-    const insertPairs = sql.transaction((pairs) => {
-        pairs.forEach((p) => {
-            values = { user1_id: p[0], user2_id: p[1] }
-            stmt.run(values)
+    pairs.forEach((p) => {
+        var pair = { user1_id: p[0], user2_id: p[1] }
+        collection.insertOne(pair, function (err, res) {
+            if (err) throw err
+            console.log('document inserted', pair)
         })
     })
-
-    const insertPairsReversed = sql.transaction((pairs) => {
-        pairs.forEach((p) => {
-            values = { user1_id: p[1], user2_id: p[0] }
-            stmt.run(values)
-        })
-    })
-
-    insertPairs(pairs)
-    insertPairsReversed(pairs)
-}
-
-/**
- * Get all users' historical pairs
- *
- * @returns {[]} Array of all rows in the table pairs
- */
-function getAllData() {
-    let smt = sql.prepare('SELECT * FROM pairs;')
-    let rows = smt.all()
-    return rows
 }
 
 /**
@@ -103,15 +99,23 @@ function getAllData() {
  * @returns {{[userID: string]: Set}} Object with data on each user's previous pairs
  */
 function getHistoricalPairs(userIDs) {
-    const stmt = sql.prepare('SELECT * FROM pairs WHERE user1_id = ?')
     let pairs = {}
-
-    userIDs.forEach((userID) => {
+    userIDs.forEach(async (userID) => {
         pairs[userID] = new Set()
-        let tmpPairs = stmt.all(userID)
-        tmpPairs.forEach((tmpPair) => {
-            pairs[userID].add(tmpPair['user2_id'])
-        })
+        const query = {
+            $or: [{ user1_id: { $eq: userID } }, { user2_id: { $eq: userID } }],
+        }
+        const cursor = collection.find(query)
+        const results = await cursor.toArray()
+        if (results.length > 0) {
+            results.forEach((result) => {
+                if (result['user1_id'] != userID) {
+                    pairs[userID].add(result['user2_id'])
+                } else {
+                    pairs[userID].add(result['user1_id'])
+                }
+            })
+        }
     })
     return pairs
 }
@@ -278,23 +282,6 @@ The channel will automatically be closed after ${interval} days.
 client.on('ready', async () => {
     console.log(`Logged in as ${client.user.tag}!`)
 
-    // Check if the table "pairs" exists.
-    const table = sql
-        .prepare(
-            "SELECT count(*) FROM sqlite_master WHERE type='table' AND name = 'pairs';"
-        )
-        .get()
-    if (!table['count(*)']) {
-        // If the table isn't there, create it and setup the database correctly.
-        sql.prepare(
-            'CREATE TABLE pairs (id INTEGER PRIMARY KEY AUTOINCREMENT, user1_id TEXT, user2_id TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);'
-        ).run()
-        // Ensure that the "id" row is always unique and indexed.
-        sql.prepare('CREATE INDEX idx_users ON pairs (user1_id);').run()
-        sql.pragma('synchronous = 1')
-        sql.pragma('journal_mode = wal')
-    }
-    // Load guild once bot is ready
     guild = client.guilds.cache.get(config.guildID)
 })
 
@@ -359,6 +346,7 @@ client.on('messageCreate', async (message) => {
         console.log('Groups: ')
         console.log(groups)
         deleteMatchingChannels()
+        setHistoricalPairs(groups)
         createPrivateChannels(groups)
 
         matchingJob.start()
@@ -386,6 +374,7 @@ client.on('messageCreate', async (message) => {
 
     if (command === 'deleteChannels') {
         deleteMatchingChannels()
+        message.reply(`Channels deleted.`)
     }
 
     if (command === 'testMatch') {
@@ -393,6 +382,7 @@ client.on('messageCreate', async (message) => {
         console.log('Groups: ')
         console.log(groups)
         deleteMatchingChannels()
+        setHistoricalPairs(groups)
         createPrivateChannels(groups)
     }
 })
