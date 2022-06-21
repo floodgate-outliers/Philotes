@@ -37,15 +37,14 @@ async function initDB() {
     console.log('Connected successfully to server: ', process.env.MONGO_URL)
     const db = dbClient.db(dbName)
     collection = db.collection('pairs')
-    console.log(collection)
 }
 initDB()
 
 function getCronJob() {
     // return cron job with interval in seconds
-    return new cron.CronJob(`*/${interval} * * * * *`, async () => {
-        // return cron job with interval in days
-        // return new cron.CronJob(`* * * */${interval} * *`, async () => {
+    // return new cron.CronJob(`*/${interval} * * * * *`, async () => {
+    // return cron job with interval in days
+    return new cron.CronJob(`* * * */${interval} * *`, async () => {
         let groups = await getNewGroups()
         console.log('Groups: ')
         console.log(groups)
