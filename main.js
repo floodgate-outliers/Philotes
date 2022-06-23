@@ -48,9 +48,9 @@ function getCronJob() {
         let groups = await getNewGroups()
         console.log('Groups: ')
         console.log(groups)
-        setHistoricalPairs(groups)
+        await setHistoricalPairs(groups)
         deleteMatchingChannels()
-        createPrivateChannels(groups)
+        await createPrivateChannels(groups)
     })
 }
 
@@ -60,15 +60,15 @@ async function getParticipatingUserIDs() {
         let participatingUserIDs = new Set()
         console.log('Roles', roles)
 
-        roles.forEach((roleName) => {
+        for (const roleName of roles) {
             const Role = guild.roles.cache.find((role) => role.name == roleName)
             usersWithRole = guild.roles.cache
                 .get(Role.id)
                 .members.map((m) => m.user.id)
-            usersWithRole.forEach((user) => {
+            for (const userWithRole of usersWithRole) {
                 participatingUserIDs.add(user)
-            })
-        })
+            }
+        }
 
         return participatingUserIDs
     } catch (err) {
@@ -80,50 +80,52 @@ async function getParticipatingUserIDs() {
 /**
  * Store historical pairs in db
  *
- * @param {[[]]} pairs
+ * @param {Promise[[]]} pairs
  */
-function setHistoricalPairs(pairs) {
-    pairs.forEach((p) => {
-        var pair = { user1_id: p[0], user2_id: p[1] }
-        collection.insertOne(pair, function (err, res) {
-            if (err) throw err
-            console.log('document inserted', pair)
-        })
-    })
+async function setHistoricalPairs(pairs) {
+    for (const pair of pairs) {
+        var obj = { user1_id: pair[0], user2_id: pair[1] }
+        try {
+            await collection.insertOne(obj)
+            console.log('document inserted', obj)
+        } catch (error) {
+            console.log('Error inserting document:', obj)
+        }
+    }
+    return
 }
 
 /**
  * Get all users' historical pairs
+ @param {string[]} userIDs
+ @returns {Promise{{[userID: string]: Set}}} Object with data on each user's previous pairs
  *
- * @param {string[]} userIDs
- * @returns {{[userID: string]: Set}} Object with data on each user's previous pairs
  */
-function getHistoricalPairs(userIDs) {
+async function getHistoricalPairs(userIDs) {
     let pairs = {}
-    userIDs.forEach(async (userID) => {
+    for (const userID of userIDs) {
         pairs[userID] = new Set()
         const query = {
             $or: [{ user1_id: { $eq: userID } }, { user2_id: { $eq: userID } }],
         }
-        const cursor = collection.find(query)
-        const results = await cursor.toArray()
+        const results = await collection.find(query).toArray()
         if (results.length > 0) {
-            results.forEach((result) => {
+            for (const result of results) {
                 if (result['user1_id'] != userID) {
                     pairs[userID].add(result['user2_id'])
                 } else {
                     pairs[userID].add(result['user1_id'])
                 }
-            })
+            }
         }
-    })
+    }
     return pairs
 }
 
 /**
  * Helper function to delete all private channels
  */
-async function deleteMatchingChannels() {
+function deleteMatchingChannels() {
     let channels = client.channels.cache.filter(
         (channel) => channel.name === config.matchingChannelName
     )
@@ -153,7 +155,7 @@ function shuffle(array) {
  * Constructs new groups based on historical pairs
  * https://lifeat.tails.com/how-we-made-bagelbot/
  *
- * @returns {[string[]]} New groups of the form [[user_1_ID, user_2_ID], [user_3_ID, user_4_ID], ...]
+ * @returns {Promise{[string[]]{}} New groups of the form [[user_1_ID, user_2_ID], [user_3_ID, user_4_ID], ...]
  */
 async function getNewGroups() {
     let participatingUserIDs = await getParticipatingUserIDs()
@@ -233,7 +235,7 @@ async function getNewGroups() {
  * Create private channels with the paired users
  *
  * @param {[string[]]} userIDGroups Array of grouped User ID's of the form [[user_1_ID, user_2_ID], [user_3_ID, user_4_ID], ...]
- * @returns {void}
+ * @returns {Promise{void}}
  */
 async function createPrivateChannels(userIDGroups) {
     if (!guild) return
