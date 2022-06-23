@@ -45,6 +45,7 @@ function getCronJob() {
     // return new cron.CronJob(`*/${interval} * * * * *`, async () => {
     // return cron job with interval in days
     return new cron.CronJob(`* * * */${interval} * *`, async () => {
+        console.log('### START NEXT MATCHING ROUND ###')
         let groups = await getNewGroups()
         console.log('Groups: ')
         console.log(groups)
@@ -62,10 +63,10 @@ async function getParticipatingUserIDs() {
 
         for (const roleName of roles) {
             const Role = guild.roles.cache.find((role) => role.name == roleName)
-            usersWithRole = guild.roles.cache
+            const usersWithRole = guild.roles.cache
                 .get(Role.id)
                 .members.map((m) => m.user.id)
-            for (const userWithRole of usersWithRole) {
+            for (const user of usersWithRole) {
                 participatingUserIDs.add(user)
             }
         }
@@ -102,6 +103,7 @@ async function setHistoricalPairs(pairs) {
  *
  */
 async function getHistoricalPairs(userIDs) {
+    console.log(userIDs)
     let pairs = {}
     for (const userID of userIDs) {
         pairs[userID] = new Set()
