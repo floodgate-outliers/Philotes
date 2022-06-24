@@ -2,6 +2,7 @@
 .env
 historicalPairs.*
 node_modules
+config.*.json
 
 # Logs
 logs

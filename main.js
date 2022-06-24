@@ -23,7 +23,8 @@ const client = new Client({
 
 let status = 'init'
 let interval = 7
-let matchingJob = getCronJob()
+// Wait to initialize cron job until we want it to run
+let matchingJob
 let groupSize = 2
 let roles = []
 // Wait to load guild and roles until bot is ready
@@ -40,19 +41,55 @@ async function initDB() {
 }
 initDB()
 
+/**
+ * Get the current date in a nicely formatted string
+ *
+ * @returns {string} Current date formatted as 'MM/DD/YYYY @ hh:mm:ss'
+ */
+function getCurrentDateFormatted() {
+    const currDate = new Date()
+    const currDateFormatted = `${
+        currDate.getMonth() + 1
+    }/${currDate.getDate()}/${currDate.getFullYear()} @ ${currDate.getHours()}:${currDate.getMinutes()}:${currDate.getSeconds()}`
+    return currDateFormatted
+}
+
+/**
+ * Helper function to match users
+ *
+ * @returns {Promise<void>}
+ */
+async function matchUsers() {
+    console.log(
+        `### START NEXT MATCHING ROUND ${getCurrentDateFormatted()} ###`
+    )
+    let groups = await getNewGroups()
+    console.log('Groups: ')
+    console.log(groups)
+    await setHistoricalPairs(groups)
+    await deleteMatchingChannels()
+    await createPrivateChannels(groups)
+}
+
+/**
+ * Creates a new cron job to match users
+ *
+ * @returns {cron.CronJob}
+ */
 function getCronJob() {
+    console.log(`### CRON JOB SET ${getCurrentDateFormatted()} ###`)
     // return cron job with interval in seconds
-    // return new cron.CronJob(`*/${interval} * * * * *`, async () => {
+    // return new cron.CronJob(
+    //     `*/${interval} * * * * *`,
     // return cron job with interval in days
-    return new cron.CronJob(`* * * */${interval} * *`, async () => {
-        console.log('### START NEXT MATCHING ROUND ###')
-        let groups = await getNewGroups()
-        console.log('Groups: ')
-        console.log(groups)
-        await setHistoricalPairs(groups)
-        deleteMatchingChannels()
-        await createPrivateChannels(groups)
-    })
+    return new cron.CronJob(
+        `0 0 8 */${interval} * *`,
+        matchUsers,
+        () => {
+            console.log('### CRON JOB STOPPED ###')
+        },
+        true
+    )
 }
 
 async function getParticipatingUserIDs() {
@@ -81,7 +118,7 @@ async function getParticipatingUserIDs() {
 /**
  * Store historical pairs in db
  *
- * @param {Promise[[]]} pairs
+ * @param {Promise<void>} pairs
  */
 async function setHistoricalPairs(pairs) {
     for (const pair of pairs) {
@@ -99,7 +136,7 @@ async function setHistoricalPairs(pairs) {
 /**
  * Get all users' historical pairs
  @param {string[]} userIDs
- @returns {Promise{{[userID: string]: Set}}} Object with data on each user's previous pairs
+ @returns {Promise<{[userID: string]: Set}>} Object with data on each user's previous pairs
  *
  */
 async function getHistoricalPairs(userIDs) {
@@ -126,22 +163,24 @@ async function getHistoricalPairs(userIDs) {
 
 /**
  * Helper function to delete all private channels
+ *
+ * @returns {Promise<void>}
  */
-function deleteMatchingChannels() {
+async function deleteMatchingChannels() {
     let channels = client.channels.cache.filter(
         (channel) => channel.name === config.matchingChannelName
     )
     channels = Array.from(channels.values())
     for (let i = 0; i < channels.length; i++) {
-        channels[i].delete()
+        await channels[i].delete()
     }
 }
 
 /**
  * Fischer-Yates Shuffle Algorithm
  *
- * @param {[Array]} array
- * @returns {Array} Shuffled array
+ * @param {[]} array
+ * @returns {[]} Shuffled array
  */
 function shuffle(array) {
     for (let i = array.length - 1; i > 0; i--) {
@@ -157,7 +196,7 @@ function shuffle(array) {
  * Constructs new groups based on historical pairs
  * https://lifeat.tails.com/how-we-made-bagelbot/
  *
- * @returns {Promise{[string[]]{}} New groups of the form [[user_1_ID, user_2_ID], [user_3_ID, user_4_ID], ...]
+ * @returns {Promise<[string[]]>} New groups of the form [[user_1_ID, user_2_ID], [user_3_ID, user_4_ID], ...]
  */
 async function getNewGroups() {
     let participatingUserIDs = await getParticipatingUserIDs()
@@ -228,9 +267,6 @@ async function getNewGroups() {
     }
 
     return newGroups
-
-    // client.setScore = sql.prepare("INSERT OR REPLACE INTO pairs (id, user1_id, user2_id) VALUES (@id, @user1_id, @user2_id);");
-    // => write to SQL lite db
 }
 
 /**
@@ -339,20 +375,23 @@ client.on('messageCreate', async (message) => {
     if (command === 'pause') {
         status = 'paused'
         message.channel.send(`New status: ${status}`)
-        matchingJob.stop()
+        if (matchingJob) {
+            matchingJob.stop()
+        }
     }
 
     if (command === 'resume' || command === 'start') {
         status = 'active'
         message.channel.send(`New status: ${status}`)
 
-        let groups = await getNewGroups()
-        console.log('Groups: ')
-        console.log(groups)
-        deleteMatchingChannels()
-        setHistoricalPairs(groups)
-        createPrivateChannels(groups)
+        if (command === 'start') {
+            // Run once immediately
+            await matchUsers()
+        }
 
+        if (!matchingJob) {
+            matchingJob = getCronJob()
+        }
         matchingJob.start()
     }
 
@@ -364,7 +403,9 @@ client.on('messageCreate', async (message) => {
     if (command === 'setInterval') {
         let newInterval = args[0]
         interval = newInterval
-        matchingJob.stop()
+        if (matchingJob) {
+            matchingJob.stop()
+        }
         matchingJob = getCronJob()
         matchingJob.start()
         message.reply(`New interval: ${args}`)
