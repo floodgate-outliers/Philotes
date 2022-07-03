@@ -102,7 +102,12 @@ async function getParticipatingUserIDs() {
             const Role = guild.roles.cache.find((role) => role.name == roleName)
             const usersWithRole = guild.roles.cache
                 .get(Role.id)
-                .members.map((m) => m.user.id)
+                .members.filter((m) => {
+                    if (!config.blackList.includes(m.user.id)) {
+                        return m
+                    }
+                })
+                .map((m) => m.user.id)
             for (const user of usersWithRole) {
                 participatingUserIDs.add(user)
             }
