@@ -1,11 +1,12 @@
 {
     "name": "donut-bot",
     "version": "1.0.0",
-    "main": "index.js",
+    "main": "index.ts",
     "license": "MIT",
     "scripts": {
-        "start": "node ./main.js",
-        "debug": "nodemon ./main.js"
+        "start": "node ./main.ts",
+        "debug": "nodemon ./main.ts",
+        "lint": "eslint . --ext .ts"
     },
     "dependencies": {
         "better-sqlite3": "^7.5.3",
@@ -16,6 +17,11 @@
         "node-gyp": "^9.0.0"
     },
     "devDependencies": {
-        "nodemon": "^2.0.16"
+        "@types/cron": "^2.0.0",
+        "@typescript-eslint/eslint-plugin": "^5.30.5",
+        "@typescript-eslint/parser": "^5.30.5",
+        "eslint": "^8.19.0",
+        "nodemon": "^2.0.16",
+        "typescript": "^4.7.4"
     }
 }
