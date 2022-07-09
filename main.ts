@@ -1,15 +1,23 @@
+import {
+    Client,
+    Intents,
+    Permissions,
+    Guild,
+    OverwriteResolvable,
+} from 'discord.js'
+import { MongoClient, Collection, Document } from 'mongodb'
+import cron from 'cron'
+
+import devConfig from './config_dev.json'
+import prodConfig from './config.json'
 require('dotenv').config()
-const cron = require('cron')
-const { Client, Intents, Permissions } = require('discord.js')
-const { MongoClient } = require('mongodb')
 
-let config
-
+let config = devConfig
 if (process.env.ENV == 'dev') {
-    config = require('./config_dev.json')
+    config = devConfig
     console.log('load dev config')
 } else {
-    config = require('./config.json')
+    config = prodConfig
     console.log('load prod config')
 }
 
@@ -21,19 +29,19 @@ const client = new Client({
     ],
 })
 
-let status = 'init'
+let botStatus = 'init'
 let interval = 7
 // Wait to initialize cron job until we want it to run
-let matchingJob
+let matchingJob: cron.CronJob | undefined
 let groupSize = 2
 let roles = []
 // Wait to load guild and roles until bot is ready
-let guild
-let collection
+let guild: Guild | undefined
+let collection: Collection<Document>
 
-async function initDB() {
+async function initDB(): Promise<void> {
     const dbName = 'outliers_mongo'
-    const dbClient = new MongoClient(process.env.MONGO_URL)
+    const dbClient = new MongoClient(process.env.MONGO_URL || '')
     await dbClient.connect()
     console.log('Connected successfully to server: ', process.env.MONGO_URL)
     const db = dbClient.db(dbName)
@@ -46,7 +54,7 @@ initDB()
  *
  * @returns {string} Current date formatted as 'MM/DD/YYYY @ hh:mm:ss'
  */
-function getCurrentDateFormatted() {
+function getCurrentDateFormatted(): string {
     const currDate = new Date()
     const currDateFormatted = `${
         currDate.getMonth() + 1
@@ -59,11 +67,11 @@ function getCurrentDateFormatted() {
  *
  * @returns {Promise<void>}
  */
-async function matchUsers() {
+async function matchUsers(): Promise<void> {
     console.log(
         `### START NEXT MATCHING ROUND ${getCurrentDateFormatted()} ###`
     )
-    let groups = await getNewGroups()
+    const groups = await getNewGroups()
     console.log('Groups: ')
     console.log(groups)
     await setHistoricalPairs(groups)
@@ -76,7 +84,7 @@ async function matchUsers() {
  *
  * @returns {cron.CronJob}
  */
-function getCronJob() {
+function getCronJob(): cron.CronJob {
     console.log(`### CRON JOB SET ${getCurrentDateFormatted()} ###`)
     // return cron job with interval in seconds
     // return new cron.CronJob(
@@ -84,6 +92,9 @@ function getCronJob() {
     // return cron job with interval in days
     return new cron.CronJob(
         `0 0 8 */${interval} * *`,
+        // return cron job with interval in days of the week
+        // return new cron.CronJob(
+        //     `0 0 8 * * 3`,
         matchUsers,
         () => {
             console.log('### CRON JOB STOPPED ###')
@@ -92,20 +103,22 @@ function getCronJob() {
     )
 }
 
-async function getParticipatingUserIDs() {
+async function getParticipatingUserIDs(): Promise<Set<string>> {
+    if (!guild) return
     try {
         await guild.members.fetch()
-        let participatingUserIDs = new Set()
+        const participatingUserIDs: Set<string> = new Set()
         console.log('Roles', roles)
 
         for (const roleName of roles) {
             const Role = guild.roles.cache.find((role) => role.name == roleName)
-            const usersWithRole = guild.roles.cache
-                .get(Role.id)
+            const usersWithRole: string[] = guild.roles.cache
+                .get(Role.id || '')
                 .members.filter((m) => {
                     if (!config.blackList.includes(m.user.id)) {
-                        return m
+                        return false
                     }
+                    return true
                 })
                 .map((m) => m.user.id)
             for (const user of usersWithRole) {
@@ -125,9 +138,9 @@ async function getParticipatingUserIDs() {
  *
  * @param {Promise<void>} pairs
  */
-async function setHistoricalPairs(pairs) {
+async function setHistoricalPairs(pairs: [string[]]): Promise<void> {
     for (const pair of pairs) {
-        var obj = { user1_id: pair[0], user2_id: pair[1] }
+        const obj = { user1_id: pair[0], user2_id: pair[1] }
         try {
             await collection.insertOne(obj)
             console.log('document inserted', obj)
@@ -140,13 +153,15 @@ async function setHistoricalPairs(pairs) {
 
 /**
  * Get all users' historical pairs
- @param {string[]} userIDs
- @returns {Promise<{[userID: string]: Set}>} Object with data on each user's previous pairs
+ @param {Set<string>} userIDs
+ @returns {Promise<{[userId: string]: Set<string[]>}>} Object with data on each user's previous pairs
  *
  */
-async function getHistoricalPairs(userIDs) {
+async function getHistoricalPairs(
+    userIDs: Set<string>
+): Promise<{ [userId: string]: Set<string[]> }> {
     console.log(userIDs)
-    let pairs = {}
+    const pairs = {}
     for (const userID of userIDs) {
         pairs[userID] = new Set()
         const query = {
@@ -171,13 +186,13 @@ async function getHistoricalPairs(userIDs) {
  *
  * @returns {Promise<void>}
  */
-async function deleteMatchingChannels() {
-    let channels = client.channels.cache.filter(
+async function deleteMatchingChannels(): Promise<void> {
+    const matchingChannels = guild.channels.cache.filter(
         (channel) => channel.name === config.matchingChannelName
     )
-    channels = Array.from(channels.values())
-    for (let i = 0; i < channels.length; i++) {
-        await channels[i].delete()
+    const matchingChannelsArray = Array.from(matchingChannels.values())
+    for (let i = 0; i < matchingChannelsArray.length; i++) {
+        await matchingChannelsArray[i].delete()
     }
 }
 
@@ -187,7 +202,7 @@ async function deleteMatchingChannels() {
  * @param {[]} array
  * @returns {[]} Shuffled array
  */
-function shuffle(array) {
+function shuffle<T>(array: T[]): T[] {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1))
         const temp = array[i]
@@ -203,17 +218,17 @@ function shuffle(array) {
  *
  * @returns {Promise<[string[]]>} New groups of the form [[user_1_ID, user_2_ID], [user_3_ID, user_4_ID], ...]
  */
-async function getNewGroups() {
-    let participatingUserIDs = await getParticipatingUserIDs()
+async function getNewGroups(): Promise<[string[]]> {
+    const participatingUserIDs = await getParticipatingUserIDs()
     console.log(participatingUserIDs)
-    let historicalPairs = getHistoricalPairs(participatingUserIDs)
+    const historicalPairs = getHistoricalPairs(participatingUserIDs)
     // Can use simple data below for basic testing until getParticipatingUserIDs() is implemented
     // let participatingUserIDs = ['0', '1', '2', '3', '4', '5']
     // let historicalPairs = {
     //     2: new Set('3'),
     //     3: new Set('2'),
     // }
-    let newGroups = []
+    const newGroups: [string[]] = [] as unknown as [string[]]
     // Convert set to an array to allow for shuffling
     let unpairedUserIDs = Array.from(participatingUserIDs)
     unpairedUserIDs = shuffle(unpairedUserIDs)
@@ -234,7 +249,7 @@ async function getNewGroups() {
         )
 
         // Keep track of the ID to pair the user with (either fall-back or successful pairing of users that have not met)
-        let newPairingID
+        let newPairingID: string
 
         // If there are only 2 or 3 people left, there exists only one possible pairing
         if (
@@ -278,9 +293,9 @@ async function getNewGroups() {
  * Create private channels with the paired users
  *
  * @param {[string[]]} userIDGroups Array of grouped User ID's of the form [[user_1_ID, user_2_ID], [user_3_ID, user_4_ID], ...]
- * @returns {Promise{void}}
+ * @returns {Promise<void>}
  */
-async function createPrivateChannels(userIDGroups) {
+async function createPrivateChannels(userIDGroups: [string[]]): Promise<void> {
     if (!guild) return
     // Get the category to place the channel under
     const channelCategory = guild.channels.cache.find(
@@ -294,29 +309,32 @@ async function createPrivateChannels(userIDGroups) {
     // Iterate over userID pairings and create DM group
     for (const userIDPair of userIDGroups) {
         // Construct permission overwrite for each user in the pair
-        const userPermissionOverWrites = userIDPair.map((userID) => {
-            return {
-                type: 'member',
-                id: userID,
-                allow: Permissions.ALL,
+        const userPermissionOverWrites: OverwriteResolvable[] = userIDPair.map(
+            (userID) => {
+                return {
+                    type: 'member',
+                    id: userID,
+                    allow: Permissions.ALL,
+                }
             }
-        })
+        )
         // Create private channel
-        let channel = await guild.channels.create(config.matchingChannelName, {
-            parent: channelCategory.id,
-            permissionOverwrites: [
-                {
-                    id: guild.roles.everyone,
-                    deny: Permissions.ALL,
-                },
-                // Add the overwrites for the pair of users
-                ...userPermissionOverWrites,
-            ],
-        })
-        console.log(channel.channels)
+        const channel = await guild.channels.create(
+            config.matchingChannelName,
+            {
+                parent: channelCategory.id,
+                permissionOverwrites: [
+                    {
+                        id: guild.roles.everyone,
+                        deny: Permissions.ALL,
+                    },
+                    // Add the overwrites for the pair of users
+                    ...userPermissionOverWrites,
+                ],
+            }
+        )
         const userIDTag = userIDPair.map((userID) => `<@${userID}>`).join(' ')
-        client.channels.cache.get(channel.id).send(`
-        Hey ${userIDTag} 👋,
+        channel.send(`Hey ${userIDTag} 👋,
 You have been matched!
 Schedule a call, go for a walk or do whatever else.
 The channel will automatically be closed after ${interval} days.
@@ -340,7 +358,10 @@ client.on('messageCreate', async (message) => {
         return
 
     // extract command and arguments from message
-    let input = message.content.slice(config.prefix.length).trim().split(/ +/g)
+    const input = message.content
+        .slice(config.prefix.length)
+        .trim()
+        .split(/ +/g)
     const command = input.shift()
     const args = input.join(' ')
     console.log(args)
@@ -371,23 +392,23 @@ client.on('messageCreate', async (message) => {
     }
 
     if (command === 'status') {
-        message.channel.send(`Status: ${status}`)
+        message.channel.send(`Status: ${botStatus}`)
         message.channel.send(`Roles: ${roles}`)
         message.channel.send(`Interval: ${interval}`)
         message.channel.send(`GroupSize: ${groupSize}`)
     }
 
     if (command === 'pause') {
-        status = 'paused'
-        message.channel.send(`New status: ${status}`)
+        botStatus = 'paused'
+        message.channel.send(`New status: ${botStatus}`)
         if (matchingJob) {
             matchingJob.stop()
         }
     }
 
     if (command === 'resume' || command === 'start') {
-        status = 'active'
-        message.channel.send(`New status: ${status}`)
+        botStatus = 'active'
+        message.channel.send(`New status: ${botStatus}`)
 
         if (command === 'start') {
             // Run once immediately
@@ -398,6 +419,9 @@ client.on('messageCreate', async (message) => {
             matchingJob = getCronJob()
         }
         matchingJob.start()
+        console.log('---nextDates---')
+        console.log(Object.keys(matchingJob))
+        // console.log(matchingJob.nextDates())
     }
 
     if (command === 'setRoles') {
@@ -406,8 +430,8 @@ client.on('messageCreate', async (message) => {
     }
 
     if (command === 'setInterval') {
-        let newInterval = args[0]
-        interval = newInterval
+        const newInterval = args[0]
+        interval = Number(newInterval)
         if (matchingJob) {
             matchingJob.stop()
         }
@@ -418,7 +442,7 @@ client.on('messageCreate', async (message) => {
     }
 
     if (command === 'setGroupSize') {
-        groupSize = args[0]
+        groupSize = Number(args[0])
         message.reply(`New group size: ${groupSize}`)
     }
 
@@ -428,13 +452,54 @@ client.on('messageCreate', async (message) => {
     }
 
     if (command === 'testMatch') {
-        let groups = await getNewGroups()
+        const groups = await getNewGroups()
         console.log('Groups: ')
         console.log(groups)
         deleteMatchingChannels()
         setHistoricalPairs(groups)
         createPrivateChannels(groups)
     }
+
+    if (command === 'nextDate') {
+        if (matchingJob) {
+            // const datesObj = matchingJob.nextDate()
+            // const { dayOfMonth } = datesObj.cronTime
+            // console.log(dayOfMonth)
+            // let datesArray = Object.keys(dayOfMonth).map((date) => {
+            //     if (dayOfMonth[date] && Number(date) >= new Date().getDate()) {
+            //         return `${new Date().getMonth() + 1}/${date}`
+            //     } else {
+            //         return null
+            //     }
+            // })
+            // datesArray = datesArray.filter((date) => date !== null)
+            // console.log(datesArray)
+            // message.reply(datesArray.join('\n'))
+            console.log(matchingJob.nextDate().toISODate())
+            message.reply(matchingJob.nextDate().toISODate())
+        }
+    }
+
+    // if (command === 'datesForMonth') {
+    //     if (!matchingJob) {
+    //         message.reply('No matching job running')
+    //         return
+    //     }
+
+    //     const datesObj = matchingJob
+    //     const { dayOfMonth } = datesObj.cronTime
+    //     console.log(matchingJob)
+    //     let datesArray = Object.keys(dayOfMonth).map((date) => {
+    //         if (dayOfMonth[date] && Number(date) >= new Date().getDate()) {
+    //             return `${new Date().getMonth() + 1}/${date}`
+    //         } else {
+    //             return null
+    //         }
+    //     })
+    //     datesArray = datesArray.filter((date) => date !== null)
+    //     console.log(datesArray)
+    //     message.reply(datesArray.join('\n'))
+    // }
 })
 
 client.login(process.env.TOKEN)
