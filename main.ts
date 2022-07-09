@@ -8,8 +8,8 @@ import {
 import { MongoClient, Collection, Document } from 'mongodb'
 import cron from 'cron'
 
-import devConfig from './config_dev.json'
-import prodConfig from './config.json'
+import devConfig from './config/config_dev.json'
+import prodConfig from './config/config.json'
 require('dotenv').config()
 
 let config = devConfig
@@ -389,6 +389,9 @@ client.on('messageCreate', async (message) => {
         message.channel.send('/pause => pause bot')
         message.channel.send('/resume or /start => resume or start bot')
         message.channel.send('/alive => check if bot is still alive')
+        message.channel.send(
+            '/nextDate => get date of the next round of matching'
+        )
     }
 
     if (command === 'status') {
