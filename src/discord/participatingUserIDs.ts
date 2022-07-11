@@ -16,13 +16,12 @@ export async function getParticipatingUserIDs({
     try {
         await guild.members.fetch()
         const participatingUserIDs: Set<string> = new Set()
-        console.log('Roles', roles)
         for (const roleName of roles) {
             const Role = guild.roles.cache.find((role) => role.name == roleName)
             const usersWithRole: string[] = guild.roles.cache
                 .get(Role.id || '')
                 .members.filter((m) => {
-                    if (!config.blackList.includes(m.user.id)) {
+                    if (config.blackList.includes(m.user.id)) {
                         return false
                     }
                     return true

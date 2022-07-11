@@ -103,7 +103,6 @@ client.on('messageCreate', async (message) => {
         .split(/ +/g)
     const command = input.shift()
     const args = input.join(' ')
-    console.log(args)
 
     // log command and arg on console (for debugging)
     console.log('Command: ', command)
@@ -114,20 +113,30 @@ client.on('messageCreate', async (message) => {
     }
 
     if (command === 'help') {
+        console.log('---help---')
         message.channel.send('Available commands:')
         message.channel.send(
             '/setRoles <name of role1> <name of role2> <name of role3> ... => members of which role should be included in the matching process'
         )
+
+        // Commented out to only show commands helpful for manual matches
+        // message.channel.send(
+        //     '/setInterval <int> => how often (in days) should the matching process be triggered'
+        // )
+        // message.channel.send(
+        //     '/setGroupSize <int> => how many members should be included in one matching group'
+        // )
+        // message.channel.send('/status => get current status of the bot')
+        // message.channel.send('/pause => pause bot')
+        // message.channel.send('/resume or /start => resume or start bot')
+        // message.channel.send('/alive => check if bot is still alive')
+        // message.channel.send(
+        //     '/nextDate => get date of the next round of matching'
+        // )
+        message.channel.send('/matchOnce => runs matching process once')
         message.channel.send(
-            '/setInterval <int> => how often (in days) should the matching process be triggered'
+            `/deleteChannels => deletes all channels under ${config.matchingCategoryName}`
         )
-        message.channel.send(
-            '/setGroupSize <int> => how many members should be included in one matching group'
-        )
-        message.channel.send('/status => get current status of the bot')
-        message.channel.send('/pause => pause bot')
-        message.channel.send('/resume or /start => resume or start bot')
-        message.channel.send('/alive => check if bot is still alive')
     }
 
     if (command === 'status') {
@@ -210,6 +219,17 @@ client.on('messageCreate', async (message) => {
             console.log(matchingJob.nextDate().toISODate())
             message.reply(matchingJob.nextDate().toISODate())
         }
+    }
+
+    if (command === 'matchOnce') {
+        await matchUsers({
+            guild,
+            config,
+            roles,
+            collection,
+            interval,
+        })
+        message.channel.send(`Matches created! ✅`)
     }
 
     // if (command === 'datesForMonth') {

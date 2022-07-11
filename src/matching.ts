@@ -111,7 +111,6 @@ export async function getNewGroups({
         guild,
         roles,
     })
-    console.log(participatingUserIDs)
     const historicalPairs = await getHistoricalPairs({
         userIDs: participatingUserIDs,
         collection,
