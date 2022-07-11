@@ -1,10 +1,11 @@
 {
     "name": "donut-bot",
     "version": "1.0.0",
-    "main": "index.ts",
+    "main": "./dist/src/main.js",
     "license": "MIT",
     "scripts": {
-        "start": "node ./src/main.ts",
+        "build": "rimraf dist && tsc",
+        "start": "tsc && node ./dist/src/main.js",
         "debug": "nodemon ./src/main.ts",
         "lint": "eslint . --ext .ts",
         "test": "jest"

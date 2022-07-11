@@ -188,7 +188,7 @@ export async function getNewGroups({
  * @returns {Promise<void>}
  */
 type matchUsersArgs = {
-    guild: Guild
+    guild?: Guild
     config: Config
     roles: string[]
     collection: Collection
@@ -201,6 +201,7 @@ export async function matchUsers({
     collection,
     interval,
 }: matchUsersArgs): Promise<void> {
+    if (!guild) return
     console.log(
         `### START NEXT MATCHING ROUND ${getCurrentDateFormatted()} ###`
     )

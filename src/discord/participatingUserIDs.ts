@@ -1,4 +1,4 @@
-import { Guild } from 'discord.js'
+import { Guild, Role } from 'discord.js'
 import { Config } from '../../config/configType'
 
 type getParticipatingUserIDsArgs = {
@@ -12,22 +12,19 @@ export async function getParticipatingUserIDs({
     roles,
     config,
 }: getParticipatingUserIDsArgs): Promise<Set<string>> {
-    if (!guild) return
+    if (!guild) return new Set<string>()
     try {
         await guild.members.fetch()
         const participatingUserIDs: Set<string> = new Set()
         for (const roleName of roles) {
-            const Role = guild.roles.cache.find((role) => role.name == roleName)
-            const usersWithRole: string[] = guild.roles.cache
-                .get(Role.id || '')
-                .members.filter((m) => {
-                    if (config.blackList.includes(m.user.id)) {
-                        return false
-                    }
-                    return true
-                })
+            const roleData = guild.roles.cache.find(
+                (role) => role.name == roleName
+            )
+            if (!roleData) continue
+            const filteredUsersWithRole = roleData.members
+                .filter((m) => !config.blackList.includes(m.user.id))
                 .map((m) => m.user.id)
-            for (const user of usersWithRole) {
+            for (const user of filteredUsersWithRole) {
                 participatingUserIDs.add(user)
             }
         }
@@ -36,5 +33,5 @@ export async function getParticipatingUserIDs({
     } catch (err) {
         console.error(err)
     }
-    return
+    return new Set<string>()
 }

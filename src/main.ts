@@ -35,7 +35,7 @@ let interval = 7
 // Wait to initialize cron job until we want it to run
 let matchingJob: cron.CronJob | undefined
 let groupSize = 2
-let roles = []
+let roles: string[] = []
 // Wait to load guild and roles until bot is ready
 let guild: Guild | undefined
 let collection: Collection<Document>
@@ -82,12 +82,17 @@ function getCronJob(): cron.CronJob {
 }
 
 client.on('ready', async () => {
-    console.log(`Logged in as ${client.user.tag}!`)
-
+    console.log(`Logged in as ${client.user?.tag}!`)
     guild = client.guilds.cache.get(config.guildID)
 })
 
 client.on('messageCreate', async (message) => {
+    // Check to see if the bot has been initialized
+    if (!guild) {
+        message.channel.send('Bot is not ready...')
+        return
+    }
+
     // if the author is another bot OR the command is not in the bot communications channel OR the command doesn't start with the correct prefix => ignore
     if (
         message.author.bot ||
@@ -133,7 +138,9 @@ client.on('messageCreate', async (message) => {
         // message.channel.send(
         //     '/nextDate => get date of the next round of matching'
         // )
-        message.channel.send('/matchOnce => runs matching process once')
+        message.channel.send(
+            '/matchOnce => deletes previous matches and creates new matches'
+        )
         message.channel.send(
             `/deleteChannels => deletes all channels under ${config.matchingCategoryName}`
         )
@@ -229,7 +236,9 @@ client.on('messageCreate', async (message) => {
             collection,
             interval,
         })
-        message.channel.send(`Matches created! ✅`)
+        message.channel.send(`Deleted previous matched channels! ✅`)
+        message.channel.send(`New matches created! ✅`)
+        message.channel.send(`---⚡🦎---`)
     }
 
     // if (command === 'datesForMonth') {

@@ -29,7 +29,7 @@ describe('matching', () => {
                 expect(matches.length).toBe(pairMatches.length)
             })
             it('pairs all', () => {
-                const matchedIds = []
+                const matchedIds: string[] = []
                 matches.forEach((pair) => matchedIds.push(...pair))
                 matchedIds.sort()
                 expect(matchedIds).toStrictEqual(participatingUserIDs)
