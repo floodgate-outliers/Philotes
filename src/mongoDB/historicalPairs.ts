@@ -49,7 +49,11 @@ export async function setHistoricalPairs({
     pairs,
 }: setHistoricalPairsArgs): Promise<void> {
     for (const pair of pairs) {
-        const obj = { user1_id: pair[0], user2_id: pair[1] }
+        const obj = {
+            user1_id: pair[0],
+            user2_id: pair[1],
+            created_at: new Date(),
+        }
         try {
             await collection.insertOne(obj)
             console.log('document inserted', obj)
