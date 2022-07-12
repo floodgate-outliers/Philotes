@@ -48,11 +48,13 @@ export async function setHistoricalPairs({
     collection,
     pairs,
 }: setHistoricalPairsArgs): Promise<void> {
+    const numLatestMatchingRound = await getLatestMatchingRound(collection)
     for (const pair of pairs) {
         const obj = {
             user1_id: pair[0],
             user2_id: pair[1],
             created_at: new Date(),
+            matching_round: numLatestMatchingRound + 1,
         }
         try {
             await collection.insertOne(obj)
@@ -62,4 +64,37 @@ export async function setHistoricalPairs({
         }
     }
     return
+}
+
+/**
+ * Get latest matching round
+ *
+ * @param {Collection} collection
+ * @returns {Promise<number>} latestMatchingRound
+ *
+ */
+
+export async function getLatestMatchingRound(
+    collection: Collection
+): Promise<number> {
+    try {
+        const doc = await collection
+            .find({})
+            .sort({ matching_round: -1 })
+            .limit(1)
+            .toArray()
+        if (doc.length > 0 && doc[0]['matching_round']) {
+            const latestMatchingRound = doc[0]['matching_round']
+            console.log('Latest matching round: ', latestMatchingRound)
+            return latestMatchingRound
+        } else {
+            console.log(
+                'No entries in database. Set latest matching round to 0.'
+            )
+            return 0
+        }
+    } catch (error) {
+        console.log('Error getting the latest matching round. Return 0')
+        return 0
+    }
 }

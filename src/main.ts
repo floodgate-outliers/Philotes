@@ -218,7 +218,7 @@ client.on('messageCreate', async (message) => {
         console.log(groups)
         deleteMatchingChannels({ guild, config })
         setHistoricalPairs({ collection, pairs: groups })
-        createPrivateChannels({ guild, config, interval, userIDGroups: groups })
+        // createPrivateChannels({ guild, config, interval, userIDGroups: groups })
     }
 
     if (command === 'nextDate') {
