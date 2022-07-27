@@ -1,16 +1,16 @@
 import { Client, Intents, Guild } from 'discord.js'
 import { MongoClient, Collection, Document } from 'mongodb'
-import cron from 'cron'
+import cron, { CronJob } from 'cron'
 
 import devConfig from '../config/config_dev.json'
 import prodConfig from '../config/config.json'
-import { getCurrentDateFormatted } from './utils/getCurrentDateFormatted'
 import { getNewGroups, matchUsers } from './matching'
 import {
     createPrivateChannels,
     deleteMatchingChannels,
 } from './discord/matchingChannels'
-import { setHistoricalPairs } from './mongoDB/historicalPairs'
+import getCronJob from './cron/cronJob'
+import { getDayOfWeekString } from './utils/dayOfWeekTranslation'
 require('dotenv').config()
 
 let config = devConfig
@@ -31,7 +31,13 @@ const client = new Client({
 })
 
 let botStatus = 'init'
-let interval = 7
+// Default to Tuesday, note days are 0 indexed (Sunday = 0)
+let dayOfWeek = 2
+// Default to 11 which is 11:00 UTC, 7:00 EST, :00 PST
+let hour = 11
+// Default to 00
+let minute = 0
+
 // Wait to initialize cron job until we want it to run
 let matchingJob: cron.CronJob | undefined
 let groupSize = 2
@@ -50,35 +56,20 @@ async function initDB(): Promise<void> {
 }
 initDB()
 
-/**
- * Creates a new cron job to match users
- *
- * @returns {cron.CronJob}
- */
-function getCronJob(): cron.CronJob {
-    console.log(`### CRON JOB SET ${getCurrentDateFormatted()} ###`)
-    // return cron job with interval in seconds
-    // return new cron.CronJob(
-    //     `*/${interval} * * * * *`,
-    // return cron job with interval in days
-    return new cron.CronJob(
-        `0 0 8 */${interval} * *`,
-        // return cron job with interval in days of the week
-        // return new cron.CronJob(
-        //     `0 0 8 * * 3`,
-        () =>
+function getCronJobHelper(): CronJob {
+    return getCronJob({
+        callbackFunction: () =>
             matchUsers({
                 guild,
                 collection,
                 config,
-                interval,
+                dayOfWeek,
                 roles,
             }),
-        () => {
-            console.log('### CRON JOB STOPPED ###')
-        },
-        true
-    )
+        dayOfWeek,
+        hour,
+        minute,
+    })
 }
 
 client.on('ready', async () => {
@@ -123,6 +114,24 @@ client.on('messageCreate', async (message) => {
         message.channel.send(
             '/setRoles <name of role1> <name of role2> <name of role3> ... => members of which role should be included in the matching process'
         )
+        message.channel.send('/status => get current status of the bot')
+        message.channel.send('/pause => pause bot')
+        message.channel.send('/resume or /start => resume or start bot')
+        message.channel.send(
+            '/matchOnce => deletes previous matches and creates new matches'
+        )
+        message.channel.send(
+            `/deleteChannels => deletes all channels under ${config.matchingCategoryName}`
+        )
+        message.channel.send(
+            '/setDayOfWeek <day of week 0-6> => what day of the week (Sunday-Saturday) the matching process should be triggered'
+        )
+        message.channel.send(
+            '/setHour <hour 0-23> => what hour (0-23) the matching process should be triggered'
+        )
+        message.channel.send(
+            '/setMinute <minute 0-59> => what minute (0-59) the matching process should be triggered'
+        )
 
         // Commented out to only show commands helpful for manual matches
         // message.channel.send(
@@ -131,25 +140,18 @@ client.on('messageCreate', async (message) => {
         // message.channel.send(
         //     '/setGroupSize <int> => how many members should be included in one matching group'
         // )
-        // message.channel.send('/status => get current status of the bot')
-        // message.channel.send('/pause => pause bot')
-        // message.channel.send('/resume or /start => resume or start bot')
         // message.channel.send('/alive => check if bot is still alive')
         // message.channel.send(
         //     '/nextDate => get date of the next round of matching'
         // )
-        message.channel.send(
-            '/matchOnce => deletes previous matches and creates new matches'
-        )
-        message.channel.send(
-            `/deleteChannels => deletes all channels under ${config.matchingCategoryName}`
-        )
     }
 
     if (command === 'status') {
         message.channel.send(`Status: ${botStatus}`)
         message.channel.send(`Roles: ${roles}`)
-        message.channel.send(`Interval: ${interval}`)
+        message.channel.send(`Day of Week: ${getDayOfWeekString(dayOfWeek)}`)
+        const time = hour + ':' + String(minute).padStart(2, '0')
+        message.channel.send(`Time: ${time}`)
         message.channel.send(`GroupSize: ${groupSize}`)
     }
 
@@ -165,19 +167,27 @@ client.on('messageCreate', async (message) => {
         botStatus = 'active'
         message.channel.send(`New status: ${botStatus}`)
 
+        // Check to see if roles are set
+        if (roles.length === 0) {
+            message.channel.send(
+                'No roles have been set, so no matches will be made. Run "/setRoles <name of role1> <name of role2> <name of role3> ..." to set roles'
+            )
+            return
+        }
+
         if (command === 'start') {
             // Run once immediately
             await matchUsers({
                 guild,
                 config,
                 collection,
-                interval,
+                dayOfWeek,
                 roles,
             })
         }
 
         if (!matchingJob) {
-            matchingJob = getCronJob()
+            matchingJob = getCronJobHelper()
         }
         matchingJob.start()
         console.log('---nextDates---')
@@ -190,15 +200,54 @@ client.on('messageCreate', async (message) => {
         message.reply(`New Roles: ${roles}`)
     }
 
-    if (command === 'setInterval') {
-        const newInterval = args[0]
-        interval = Number(newInterval)
+    if (command === 'setDayOfWeek') {
+        const newDayOfWeek = Number(args[0])
+        if (newDayOfWeek < 0 || newDayOfWeek > 7) {
+            message.reply('Day of Week must be between 0-7, inclusive')
+            return
+        }
+        dayOfWeek = newDayOfWeek
+
         if (matchingJob) {
             matchingJob.stop()
         }
-        matchingJob = getCronJob()
+        matchingJob = getCronJobHelper()
         matchingJob.start()
-        message.reply(`New interval: ${args}`)
+        message.reply(`New day of week: ${hour} (${getDayOfWeekString(hour)})`)
+        message.reply('Matching restarted.')
+    }
+
+    if (command === 'setHour') {
+        const newHour = Number(args[0])
+        if (newHour < 0 || newHour > 23) {
+            message.reply('Hour must be between 0-23, inclusive')
+            return
+        }
+        hour = newHour
+
+        if (matchingJob) {
+            matchingJob.stop()
+        }
+        matchingJob = getCronJobHelper()
+        matchingJob.start()
+        message.reply(`New hour: ${newHour}`)
+        message.reply('Matching restarted.')
+    }
+
+    if (command === 'setMinute') {
+        const newMinute = Number(args[0])
+        if (newMinute < 0 || newMinute > 59) {
+            message.reply('Hour must be between 0-59, inclusive')
+            return
+        }
+        minute = newMinute
+
+        if (matchingJob) {
+            matchingJob.stop()
+        }
+        matchingJob = getCronJobHelper()
+        matchingJob.start()
+        message.reply(`New minute: ${newMinute}`)
         message.reply('Matching restarted.')
     }
 
@@ -217,8 +266,14 @@ client.on('messageCreate', async (message) => {
         console.log('Groups: ')
         console.log(groups)
         deleteMatchingChannels({ guild, config })
-        setHistoricalPairs({ collection, pairs: groups })
-        // createPrivateChannels({ guild, config, interval, userIDGroups: groups })
+        // Don't impact database
+        // setHistoricalPairs({ collection, pairs: groups })
+        createPrivateChannels({
+            guild,
+            config,
+            dayOfWeek,
+            userIDGroups: groups,
+        })
     }
 
     if (command === 'nextDate') {
@@ -234,7 +289,7 @@ client.on('messageCreate', async (message) => {
             config,
             roles,
             collection,
-            interval,
+            dayOfWeek,
         })
         message.channel.send(`Deleted previous matched channels! ✅`)
         message.channel.send(`New matches created! ✅`)

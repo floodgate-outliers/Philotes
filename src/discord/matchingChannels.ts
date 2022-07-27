@@ -1,5 +1,6 @@
 import { Guild, OverwriteResolvable, Permissions } from 'discord.js'
 import { Config } from '../../config/configType'
+import { getDayOfWeekString } from '../utils/dayOfWeekTranslation'
 
 /**
  * Create private channels with the paired users
@@ -11,13 +12,13 @@ type createPrivateChannelsArgs = {
     userIDGroups: [string[]]
     guild: Guild
     config: Config
-    interval: number
+    dayOfWeek: number
 }
 export async function createPrivateChannels({
     guild,
     config,
     userIDGroups,
-    interval,
+    dayOfWeek,
 }: createPrivateChannelsArgs): Promise<void> {
     if (!guild) return
     // Get the category to place the channel under
@@ -60,7 +61,7 @@ export async function createPrivateChannels({
         channel.send(`Hey ${userIDTag} 👋,
 You have been matched!
 Schedule a call, go for a walk or do whatever else.
-The channel will automatically be closed after ${interval} days.
+The channel will automatically be closed next ${getDayOfWeekString(dayOfWeek)}.
       `)
     }
 }
