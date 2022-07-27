@@ -5,7 +5,7 @@
     "license": "MIT",
     "scripts": {
         "build": "rimraf dist && tsc",
-        "start": "tsc && node ./dist/src/main.js",
+        "start": "rimraf dist && tsc && node ./dist/src/main.js",
         "debug": "nodemon ./src/main.ts",
         "lint": "eslint . --ext .ts",
         "test": "jest"

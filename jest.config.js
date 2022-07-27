@@ -5,4 +5,5 @@ module.exports = {
             tsconfig: './tsconfig.json',
         },
     },
+    globalSetup: './globalSetup.ts',
 }

@@ -1,4 +1,4 @@
-import { Guild, Role } from 'discord.js'
+import { Guild } from 'discord.js'
 import { Config } from '../../config/configType'
 
 type getParticipatingUserIDsArgs = {
