@@ -11,6 +11,7 @@ import {
 } from './discord/matchingChannels'
 import getCronJob from './cron/cronJob'
 import { getDayOfWeekString } from './utils/dayOfWeekTranslation'
+import { getMatchingTimeFormatted } from './utils/getMatchingTimeFormatted'
 require('dotenv').config()
 
 let config = devConfig
@@ -150,8 +151,8 @@ client.on('messageCreate', async (message) => {
         message.channel.send(`Status: ${botStatus}`)
         message.channel.send(`Roles: ${roles}`)
         message.channel.send(`Day of Week: ${getDayOfWeekString(dayOfWeek)}`)
-        const time = hour + ':' + String(minute).padStart(2, '0')
-        message.channel.send(`Time: ${time}`)
+        const timeFormatted = hour + ':' + String(minute).padStart(2, '0')
+        message.channel.send(`Time: ${timeFormatted}`)
         message.channel.send(`GroupSize: ${groupSize}`)
     }
 
@@ -201,24 +202,25 @@ client.on('messageCreate', async (message) => {
     }
 
     if (command === 'setDayOfWeek') {
-        const newDayOfWeek = Number(args[0])
-        if (newDayOfWeek < 0 || newDayOfWeek > 7) {
-            message.reply('Day of Week must be between 0-7, inclusive')
+        const newDayOfWeek = isNaN(Number(args)) ? -1 : Number(args)
+        if (newDayOfWeek < 0 || newDayOfWeek > 6) {
+            message.reply('Day of Week must be between 0-6, inclusive')
             return
         }
         dayOfWeek = newDayOfWeek
 
         if (matchingJob) {
             matchingJob.stop()
+            matchingJob = getCronJobHelper()
+            matchingJob.start()
+            message.reply('Matching time updated for upcoming round')
         }
-        matchingJob = getCronJobHelper()
-        matchingJob.start()
-        message.reply(`New day of week: ${hour} (${getDayOfWeekString(hour)})`)
-        message.reply('Matching restarted.')
+
+        message.reply(getMatchingTimeFormatted({ dayOfWeek, hour, minute }))
     }
 
     if (command === 'setHour') {
-        const newHour = Number(args[0])
+        const newHour = isNaN(Number(args)) ? -1 : Number(args)
         if (newHour < 0 || newHour > 23) {
             message.reply('Hour must be between 0-23, inclusive')
             return
@@ -227,28 +229,30 @@ client.on('messageCreate', async (message) => {
 
         if (matchingJob) {
             matchingJob.stop()
+            matchingJob = getCronJobHelper()
+            matchingJob.start()
+            message.reply('Matching time updated for upcoming round.')
         }
-        matchingJob = getCronJobHelper()
-        matchingJob.start()
-        message.reply(`New hour: ${newHour}`)
-        message.reply('Matching restarted.')
+
+        message.reply(getMatchingTimeFormatted({ dayOfWeek, hour, minute }))
     }
 
     if (command === 'setMinute') {
-        const newMinute = Number(args[0])
+        const newMinute = isNaN(Number(args)) ? -1 : Number(args)
         if (newMinute < 0 || newMinute > 59) {
-            message.reply('Hour must be between 0-59, inclusive')
+            message.reply('Minute must be between 0-59, inclusive')
             return
         }
         minute = newMinute
 
         if (matchingJob) {
             matchingJob.stop()
+            matchingJob = getCronJobHelper()
+            matchingJob.start()
+            message.reply('Matching time updated for upcoming round.')
         }
-        matchingJob = getCronJobHelper()
-        matchingJob.start()
-        message.reply(`New minute: ${newMinute}`)
-        message.reply('Matching restarted.')
+
+        message.reply(getMatchingTimeFormatted({ dayOfWeek, hour, minute }))
     }
 
     if (command === 'setGroupSize') {

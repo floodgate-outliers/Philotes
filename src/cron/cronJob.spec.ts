@@ -141,5 +141,31 @@ describe('cronJob', () => {
             // The callback function should have been called once
             expect(mockedCallbackFunction).toHaveBeenCalledTimes(1)
         })
+
+        it('fires callback function at updated time', () => {
+            cronJob.stop()
+
+            // Update minute 0 => 59
+            cronJob = getCronJob({
+                callbackFunction: mockedCallbackFunction,
+                dayOfWeek,
+                hour,
+                minute: 59,
+            })
+
+            // Time travel to 7-26-2022 11:00:00
+            // 1 day, 15 hours + 11 hours
+            const newMsUntilNextInterval =
+                (1 * 24 * 60 * 60 + (15 + 11) * 60 * 60) * 1000
+            jest.advanceTimersByTime(newMsUntilNextInterval)
+
+            // The callback function should not be called at the previously set time
+            expect(mockedCallbackFunction).toHaveBeenCalledTimes(0)
+
+            jest.advanceTimersByTime(59 * 60 * 1000)
+
+            // The callback function should be called at the newly set time
+            expect(mockedCallbackFunction).toHaveBeenCalledTimes(1)
+        })
     })
 })
