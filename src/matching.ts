@@ -192,14 +192,14 @@ type matchUsersArgs = {
     config: Config
     roles: string[]
     collection: Collection
-    interval: number
+    dayOfWeek: number
 }
 export async function matchUsers({
     guild,
     config,
     roles,
     collection,
-    interval,
+    dayOfWeek,
 }: matchUsersArgs): Promise<void> {
     if (!guild) return
     console.log(
@@ -224,7 +224,7 @@ export async function matchUsers({
     await createPrivateChannels({
         guild,
         config,
-        interval,
         userIDGroups: groups,
+        dayOfWeek,
     })
 }
