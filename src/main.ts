@@ -1,4 +1,4 @@
-import { Client, Intents, Guild } from 'discord.js'
+import { Client, Intents, Guild, TextChannel } from 'discord.js'
 import { MongoClient, Collection, Document } from 'mongodb'
 import cron, { CronJob } from 'cron'
 
@@ -73,6 +73,25 @@ function getCronJobHelper(guild: Guild): CronJob {
 
 client.on('ready', async () => {
     console.log(`Logged in as ${client.user?.tag}!`)
+})
+
+client.on('guildCreate', async (guild) => {
+    if (!client) return
+    // Get the first text channel where the bot is allowed to send messages
+    const channelToFetch = guild.channels.cache.find((channel) =>
+        channel.type === 'GUILD_TEXT' &&
+        channel.permissionsFor(client.user?.id || '')?.has('SEND_MESSAGES')
+            ? true
+            : false
+    )
+    if (!channelToFetch) return
+    // Get the channel and send the message
+    const firstChannel = client.channels.cache.get(
+        channelToFetch.id
+    ) as TextChannel
+    await firstChannel.send(
+        `Hello! This is my first message. I see that your guild Id is ${guild.id}`
+    )
 })
 
 client.on('messageCreate', async (message) => {
