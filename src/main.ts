@@ -43,8 +43,6 @@ let minute = 0
 let matchingJob: cron.CronJob | undefined
 let groupSize = 2
 let roles: string[] = []
-// Wait to load guild and roles until bot is ready
-let guild: Guild | undefined
 let collection: Collection<Document>
 
 async function initDB(): Promise<void> {
@@ -57,7 +55,7 @@ async function initDB(): Promise<void> {
 }
 initDB()
 
-function getCronJobHelper(): CronJob {
+function getCronJobHelper(guild: Guild): CronJob {
     return getCronJob({
         callbackFunction: () =>
             matchUsers({
@@ -75,19 +73,21 @@ function getCronJobHelper(): CronJob {
 
 client.on('ready', async () => {
     console.log(`Logged in as ${client.user?.tag}!`)
-    guild = client.guilds.cache.get(config.guildID)
 })
 
 client.on('messageCreate', async (message) => {
-    // Check to see if the bot has been initialized
+    // TODO: check if the the config fields for the message.guild have been loaded from Supabase
+
+    const guild = client.guilds.cache.get(message.guildId || '')
+
     if (!guild) {
-        message.channel.send('Bot is not ready...')
         return
     }
 
     // if the author is another bot OR the command is not in the bot communications channel OR the command doesn't start with the correct prefix => ignore
     if (
         message.author.bot ||
+        // TODO: Get the channelID for the given message.guild
         message.channelId !== config.botCommunicationChannelID ||
         message.content.indexOf(config.prefix) !== 0
     )
@@ -106,59 +106,61 @@ client.on('messageCreate', async (message) => {
     console.log('Args: ', args)
 
     if (command === 'alive') {
-        message.channel.send('Alive')
+        await message.channel.send('Alive')
     }
 
     if (command === 'help') {
         console.log('---help---')
-        message.channel.send('Available commands:')
-        message.channel.send(
+        await message.channel.send('Available commands:')
+        await message.channel.send(
             '/setRoles <name of role1> <name of role2> <name of role3> ... => members of which role should be included in the matching process'
         )
-        message.channel.send('/status => get current status of the bot')
-        message.channel.send('/pause => pause bot')
-        message.channel.send('/resume or /start => resume or start bot')
-        message.channel.send(
+        await message.channel.send('/status => get current status of the bot')
+        await message.channel.send('/pause => pause bot')
+        await message.channel.send('/resume or /start => resume or start bot')
+        await message.channel.send(
             '/matchOnce => deletes previous matches and creates new matches'
         )
-        message.channel.send(
+        await message.channel.send(
             `/deleteChannels => deletes all channels under ${config.matchingCategoryName}`
         )
-        message.channel.send(
+        await message.channel.send(
             '/setDayOfWeek <day of week 0-6> => what day of the week (Sunday-Saturday) the matching process should be triggered'
         )
-        message.channel.send(
+        await message.channel.send(
             '/setHour <hour 0-23> => what hour (0-23) the matching process should be triggered'
         )
-        message.channel.send(
+        await message.channel.send(
             '/setMinute <minute 0-59> => what minute (0-59) the matching process should be triggered'
         )
 
         // Commented out to only show commands helpful for manual matches
-        // message.channel.send(
+        // await message.channel.send(
         //     '/setInterval <int> => how often (in days) should the matching process be triggered'
         // )
-        // message.channel.send(
+        // await message.channel.send(
         //     '/setGroupSize <int> => how many members should be included in one matching group'
         // )
-        // message.channel.send('/alive => check if bot is still alive')
-        // message.channel.send(
+        // await message.channel.send('/alive => check if bot is still alive')
+        // await message.channel.send(
         //     '/nextDate => get date of the next round of matching'
         // )
     }
 
     if (command === 'status') {
-        message.channel.send(`Status: ${botStatus}`)
-        message.channel.send(`Roles: ${roles}`)
-        message.channel.send(`Day of Week: ${getDayOfWeekString(dayOfWeek)}`)
+        await message.channel.send(`Status: ${botStatus}`)
+        await message.channel.send(`Roles: ${roles}`)
+        await message.channel.send(
+            `Day of Week: ${getDayOfWeekString(dayOfWeek)}`
+        )
         const timeFormatted = hour + ':' + String(minute).padStart(2, '0')
-        message.channel.send(`Time: ${timeFormatted}`)
-        message.channel.send(`GroupSize: ${groupSize}`)
+        await message.channel.send(`Time: ${timeFormatted}`)
+        await message.channel.send(`GroupSize: ${groupSize}`)
     }
 
     if (command === 'pause') {
         botStatus = 'paused'
-        message.channel.send(`New status: ${botStatus}`)
+        await message.channel.send(`New status: ${botStatus}`)
         if (matchingJob) {
             matchingJob.stop()
         }
@@ -166,11 +168,11 @@ client.on('messageCreate', async (message) => {
 
     if (command === 'resume' || command === 'start') {
         botStatus = 'active'
-        message.channel.send(`New status: ${botStatus}`)
+        await message.channel.send(`New status: ${botStatus}`)
 
         // Check to see if roles are set
         if (roles.length === 0) {
-            message.channel.send(
+            await message.channel.send(
                 'No roles have been set, so no matches will be made. Run "/setRoles <name of role1> <name of role2> <name of role3> ..." to set roles'
             )
             return
@@ -188,7 +190,7 @@ client.on('messageCreate', async (message) => {
         }
 
         if (!matchingJob) {
-            matchingJob = getCronJobHelper()
+            matchingJob = getCronJobHelper(guild)
         }
         matchingJob.start()
         console.log('---nextDates---')
@@ -211,7 +213,7 @@ client.on('messageCreate', async (message) => {
 
         if (matchingJob) {
             matchingJob.stop()
-            matchingJob = getCronJobHelper()
+            matchingJob = getCronJobHelper(guild)
             matchingJob.start()
             message.reply('Matching time updated for upcoming round')
         }
@@ -229,7 +231,7 @@ client.on('messageCreate', async (message) => {
 
         if (matchingJob) {
             matchingJob.stop()
-            matchingJob = getCronJobHelper()
+            matchingJob = getCronJobHelper(guild)
             matchingJob.start()
             message.reply('Matching time updated for upcoming round.')
         }
@@ -247,7 +249,7 @@ client.on('messageCreate', async (message) => {
 
         if (matchingJob) {
             matchingJob.stop()
-            matchingJob = getCronJobHelper()
+            matchingJob = getCronJobHelper(guild)
             matchingJob.start()
             message.reply('Matching time updated for upcoming round.')
         }
@@ -295,9 +297,9 @@ client.on('messageCreate', async (message) => {
             collection,
             dayOfWeek,
         })
-        message.channel.send(`Deleted previous matched channels! ✅`)
-        message.channel.send(`New matches created! ✅`)
-        message.channel.send(`---⚡🦎---`)
+        await message.channel.send(`Deleted previous matched channels! ✅`)
+        await message.channel.send(`New matches created! ✅`)
+        await message.channel.send(`---⚡🦎---`)
     }
 
     // if (command === 'datesForMonth') {
