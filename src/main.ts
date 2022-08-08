@@ -25,9 +25,9 @@ if (process.env.ENV == 'dev') {
 
 const client = new Client({
     intents: [
-        Intents.FLAGS.GUILDS,
-        Intents.FLAGS.GUILD_MESSAGES,
-        Intents.FLAGS.GUILD_MEMBERS,
+        Intents.FLAGS.GUILDS, // Required to interact with guild
+        Intents.FLAGS.GUILD_MESSAGES, // Required to listent to messages
+        Intents.FLAGS.GUILD_MEMBERS, // Required to fetch members when creating channels
     ],
 })
 
@@ -79,7 +79,6 @@ client.on('messageCreate', async (message) => {
     // TODO: check if the the config fields for the message.guild have been loaded from Supabase
 
     const guild = client.guilds.cache.get(message.guildId || '')
-
     if (!guild) {
         return
     }
