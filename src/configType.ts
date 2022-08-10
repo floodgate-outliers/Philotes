@@ -5,6 +5,7 @@ export type Config = {
     matchingChannelName: string
     matchingCategoryName: string
     blackList: string[]
-    SUPABASE_API_URL: string
-    SUPABASE_API_KEY: string
+    supabaseApiUrl: string
+    supabaseApiKey: string
+    discordBotToken: string
 }

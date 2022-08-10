@@ -1,6 +1,7 @@
 import { Client, Intents, Guild, TextChannel } from 'discord.js'
 import { MongoClient, Collection, Document } from 'mongodb'
 import cron, { CronJob } from 'cron'
+import { createClient } from '@supabase/supabase-js'
 
 import { getNewGroups, matchUsers } from './matching'
 import {
@@ -21,8 +22,9 @@ const config: Config = {
     matchingChannelName: process.env.MATCHING_CHANNEL_NAME as string,
     matchingCategoryName: process.env.MATCHING_CATEGORY_NAME as string,
     blackList: ['test1', 'test2'],
-    SUPABASE_API_URL: process.env.SUPABASE_API_URL as string,
-    SUPABASE_API_KEY: process.env.SUPABASE_API_KEY as string,
+    supabaseApiUrl: process.env.SUPABASE_API_URL as string,
+    supabaseApiKey: process.env.SUPABASE_API_KEY as string,
+    discordBotToken: process.env.DISCORD_BOT_TOKEN as string,
 }
 
 const client = new Client({
@@ -32,6 +34,8 @@ const client = new Client({
         Intents.FLAGS.GUILD_MEMBERS, // Required to fetch members when creating channels
     ],
 })
+
+const supabase = createClient(config.supabaseApiUrl, config.supabaseApiKey)
 
 let botStatus = 'init'
 // Default to Tuesday, note days are 0 indexed (Sunday = 0)
@@ -55,7 +59,15 @@ async function initDB(): Promise<void> {
     const db = dbClient.db(dbName)
     collection = db.collection('pairs')
 }
-initDB()
+// initDB()
+
+async function supabaseTest(): Promise<void> {
+    const { data, error } = await supabase.from('guild_registry').select('*')
+    console.log('error: ', error)
+    console.log(data)
+}
+
+supabaseTest()
 
 function getCronJobHelper(guild: Guild): CronJob {
     return getCronJob({
@@ -344,4 +356,4 @@ client.on('messageCreate', async (message) => {
     // }
 })
 
-client.login(process.env.TOKEN)
+client.login(config.discordBotToken)
