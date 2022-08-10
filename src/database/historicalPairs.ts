@@ -1,4 +1,5 @@
-import { Collection } from 'mongodb'
+import { SupabaseClient } from '@supabase/supabase-js'
+import type { Matches, Guilds } from './types'
 
 /**
 * Get all users' historical pairs
@@ -8,26 +9,36 @@ import { Collection } from 'mongodb'
 */
 type getHistoricalPairsArgs = {
     userIDs: Set<string>
-    collection: Collection
+    supabase: SupabaseClient
 }
 export async function getHistoricalPairs({
     userIDs,
-    collection,
+    supabase,
 }: getHistoricalPairsArgs): Promise<{ [userId: string]: Set<string> }> {
     console.log(userIDs)
     const pairs = {}
     for (const userID of userIDs) {
         pairs[userID] = new Set()
-        const query = {
-            $or: [{ user1_id: { $eq: userID } }, { user2_id: { $eq: userID } }],
+
+        // await supabaseClient.from<Post>('posts').select('*') //...
+        // const { data, error } = await supabase.from('cities').select('name, country_id').or('id.eq.20,id.eq.30')
+        const query = 'user1_id.eq.' + { userID } + 'user2_id.eq.' + { userID }
+        const { data, error } = await supabase
+            .from<Matches>('matches')
+            .select('*')
+            .or(query)
+
+        if (error) {
+            console.log(error)
+            throw error
         }
-        const results = await collection.find(query).toArray()
-        if (results.length > 0) {
-            for (const result of results) {
-                if (result['user1_id'] != userID) {
-                    pairs[userID].add(result['user2_id'])
+
+        if (data != null && data.length > 0) {
+            for (const match of data) {
+                if (match.user1_id.toString() == userID) {
+                    pairs[userID].add(match.user2_id.toString)
                 } else {
-                    pairs[userID].add(result['user1_id'])
+                    pairs[userID].add(match.user1_id.toString())
                 }
             }
         }
