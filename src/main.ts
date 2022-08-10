@@ -21,6 +21,8 @@ const config: Config = {
     matchingChannelName: process.env.MATCHING_CHANNEL_NAME as string,
     matchingCategoryName: process.env.MATCHING_CATEGORY_NAME as string,
     blackList: ['test1', 'test2'],
+    SUPABASE_API_URL: process.env.SUPABASE_API_URL as string,
+    SUPABASE_API_KEY: process.env.SUPABASE_API_KEY as string,
 }
 
 const client = new Client({
