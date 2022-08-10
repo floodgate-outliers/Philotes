@@ -1,5 +1,4 @@
 import { Client, Intents, Guild, TextChannel } from 'discord.js'
-import { MongoClient, Collection, Document } from 'mongodb'
 import cron, { CronJob } from 'cron'
 import { createClient } from '@supabase/supabase-js'
 
@@ -50,16 +49,6 @@ let matchingJob: cron.CronJob | undefined
 let groupSize = 2
 let roles: string[] = []
 let collection: Collection<Document>
-
-async function initDB(): Promise<void> {
-    const dbName = 'outliers_mongo'
-    const dbClient = new MongoClient(process.env.MONGO_URL || '')
-    await dbClient.connect()
-    console.log('Connected successfully to server: ', process.env.MONGO_URL)
-    const db = dbClient.db(dbName)
-    collection = db.collection('pairs')
-}
-// initDB()
 
 async function supabaseTest(): Promise<void> {
     const { data, error } = await supabase.from('guild_registry').select('*')
