@@ -1,6 +1,6 @@
 import { Guild } from 'discord.js'
 import { Collection } from 'mongodb'
-import { Config } from '../config/configType'
+import { Config } from './configType'
 import {
     createPrivateChannels,
     deleteMatchingChannels,

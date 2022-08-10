@@ -2,8 +2,6 @@ import { Client, Intents, Guild, TextChannel } from 'discord.js'
 import { MongoClient, Collection, Document } from 'mongodb'
 import cron, { CronJob } from 'cron'
 
-import devConfig from '../config/config_dev.json'
-import prodConfig from '../config/config.json'
 import { getNewGroups, matchUsers } from './matching'
 import {
     createPrivateChannels,
@@ -12,15 +10,17 @@ import {
 import getCronJob from './cron/cronJob'
 import { getDayOfWeekString } from './utils/dayOfWeekTranslation'
 import { getMatchingTimeFormatted } from './utils/getMatchingTimeFormatted'
-require('dotenv').config()
+import { Config } from './configType'
+require('dotenv').config({ path: `.env.${process.env.NODE_ENV}` })
 
-let config = devConfig
-if (process.env.ENV == 'dev') {
-    config = devConfig
-    console.log('load dev config')
-} else {
-    config = prodConfig
-    console.log('load prod config')
+const config: Config = {
+    prefix: process.env.PREFIX as string,
+    botCommunicationChannelID: process.env
+        .BOT_COMMUNICATION_CHANNEL_ID as string,
+    guildID: process.env.GUILD_ID as string,
+    matchingChannelName: process.env.MATCHING_CHANNEL_NAME as string,
+    matchingCategoryName: process.env.MATCHING_CATEGORY_NAME as string,
+    blackList: ['test1', 'test2'],
 }
 
 const client = new Client({
