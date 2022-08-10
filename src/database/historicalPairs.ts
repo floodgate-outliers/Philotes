@@ -1,5 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js'
-import type { Matches, Guilds } from './types'
+import type { Matches } from './types'
 import { v4 as uuidv4 } from 'uuid'
 
 /**
@@ -63,7 +63,10 @@ export async function setHistoricalPairs({
     guildID,
     supabase,
 }: setHistoricalPairsArgs): Promise<void> {
-    const numLatestMatchingRound = await getLatestMatchingRound(supabase)
+    const numLatestMatchingRound = await getLatestMatchingRound(
+        supabase,
+        guildID
+    )
     for (const pair of pairs) {
         const obj: Matches = {
             id: uuidv4(),
@@ -87,32 +90,48 @@ export async function setHistoricalPairs({
 /**
  * Get latest matching round
  *
- * @param {Collection} collection
+ * @param {SupabaseClient} supabase
+ * @param {string} guildID
  * @returns {Promise<number>} latestMatchingRound
  *
  */
 
 export async function getLatestMatchingRound(
-    collection: Collection
+    supabase: SupabaseClient,
+    guildID: string
 ): Promise<number> {
-    try {
-        const doc = await collection
-            .find({})
-            .sort({ matching_round: -1 })
-            .limit(1)
-            .toArray()
-        if (doc.length > 0 && doc[0]['matching_round']) {
-            const latestMatchingRound = doc[0]['matching_round']
-            console.log('Latest matching round: ', latestMatchingRound)
-            return latestMatchingRound
-        } else {
-            console.log(
-                'No entries in database. Set latest matching round to 0.'
-            )
-            return 0
-        }
-    } catch (error) {
-        console.log('Error getting the latest matching round. Return 0')
+    // const doc = await collection
+    //     .find({})
+    //     .sort({ matching_round: -1 })
+    //     .limit(1)
+    //     .toArray()
+    // if (doc.length > 0 && doc[0]['matching_round']) {
+    //     const latestMatchingRound = doc[0]['matching_round']
+    //     console.log('Latest matching round: ', latestMatchingRound)
+    //     return latestMatchingRound
+    // } else {
+    //     console.log(
+    //         'No entries in database. Set latest matching round to 0.'
+    //     )
+    //     return 0
+    // }
+
+    const { data, error } = await supabase
+        .from<Matches>('matches')
+        .select('matching_round')
+        .eq('guild_id', guildID)
+        .order('matching_round', { ascending: false })
+        .limit(1)
+
+    if (error) {
+        console.log('Error getting the latest matching round.')
+        console.log(error)
+        throw error
+    }
+
+    if (data != null && data.length > 0) {
+        return data[0].matching_round
+    } else {
         return 0
     }
 }
