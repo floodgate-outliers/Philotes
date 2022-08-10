@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import type { Matches, Guilds } from './types'
+import { v4 as uuidv4 } from 'uuid'
 
 /**
 * Get all users' historical pairs
@@ -29,6 +30,7 @@ export async function getHistoricalPairs({
             .or(query)
 
         if (error) {
+            console.log('Error while fetching historical pairs.')
             console.log(error)
             throw error
         }
@@ -52,26 +54,31 @@ export async function getHistoricalPairs({
  * @param {Promise<void>} pairs
  */
 type setHistoricalPairsArgs = {
-    collection: Collection
     pairs: [string[]]
+    guildID: string
+    supabase: SupabaseClient
 }
 export async function setHistoricalPairs({
-    collection,
     pairs,
+    guildID,
+    supabase,
 }: setHistoricalPairsArgs): Promise<void> {
-    const numLatestMatchingRound = await getLatestMatchingRound(collection)
+    const numLatestMatchingRound = await getLatestMatchingRound(supabase)
     for (const pair of pairs) {
-        const obj = {
-            user1_id: pair[0],
-            user2_id: pair[1],
-            created_at: new Date(),
+        const obj: Matches = {
+            id: uuidv4(),
+            guild_id: Number(guildID),
+            user1_id: Number(pair[0]),
+            user2_id: Number(pair[1]),
+            created_at: new Date().toUTCString(),
             matching_round: numLatestMatchingRound + 1,
         }
-        try {
-            await collection.insertOne(obj)
-            console.log('document inserted', obj)
-        } catch (error) {
-            console.log('Error inserting document:', obj)
+        const { error } = await supabase.from<Matches>('matches').insert(obj)
+
+        if (error) {
+            console.log('Error while writing match obj to database: ', obj)
+            console.log(error)
+            throw error
         }
     }
     return
