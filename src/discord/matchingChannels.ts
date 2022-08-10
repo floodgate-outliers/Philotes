@@ -5,8 +5,8 @@ import { getDayOfWeekString } from '../utils/dayOfWeekTranslation'
 /**
  * Create private channels with the paired users
  *
- * @param {[string[]]} userIDGroups Array of grouped User ID's of the form [[user_1_ID, user_2_ID], [user_3_ID, user_4_ID], ...]
- * @returns {Promise<void>}
+ * WARNING: Bot must have Administrator permissions to create channels
+ * https://discordjs.guide/popular-topics/permissions-extended.html#limitations-and-oddities
  */
 type createPrivateChannelsArgs = {
     userIDGroups: [string[]]
