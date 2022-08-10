@@ -1,5 +1,5 @@
 import { Guild, OverwriteResolvable, Permissions } from 'discord.js'
-import { Config } from '../../config/configType'
+import { Config } from '../configType'
 import { getDayOfWeekString } from '../utils/dayOfWeekTranslation'
 
 /**
