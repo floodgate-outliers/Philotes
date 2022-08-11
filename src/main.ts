@@ -11,6 +11,7 @@ import getCronJob from './cron/cronJob'
 import { getDayOfWeekString } from './utils/dayOfWeekTranslation'
 import { getMatchingTimeFormatted } from './utils/getMatchingTimeFormatted'
 import { Config } from './configType'
+import type { Guilds } from './database/types'
 require('dotenv').config({ path: `.env.${process.env.NODE_ENV}` })
 
 const config: Config = {
@@ -48,10 +49,9 @@ let minute = 0
 let matchingJob: cron.CronJob | undefined
 let groupSize = 2
 let roles: string[] = []
-let collection: Collection<Document>
 
 async function supabaseTest(): Promise<void> {
-    const { data, error } = await supabase.from('guild_registry').select('*')
+    const { data, error } = await supabase.from('guilds').select('*')
     console.log('error: ', error)
     console.log(data)
 }
@@ -63,7 +63,7 @@ function getCronJobHelper(guild: Guild): CronJob {
         callbackFunction: () =>
             matchUsers({
                 guild,
-                collection,
+                supabase,
                 config,
                 dayOfWeek,
                 roles,
@@ -95,6 +95,13 @@ client.on('guildCreate', async (guild) => {
     await firstChannel.send(
         `Hello! This is my first message. I see that your guild Id is ${guild.id}`
     )
+    // TODO: save info about guild in guild_registry on supabase
+    const { data, error } = await supabase
+        .from<Guilds>('guilds')
+        .insert({ guild_id: Number(guild.id) })
+
+    console.log(error)
+    console.log(data)
 })
 
 client.on('messageCreate', async (message) => {
@@ -204,7 +211,7 @@ client.on('messageCreate', async (message) => {
             await matchUsers({
                 guild,
                 config,
-                collection,
+                supabase,
                 dayOfWeek,
                 roles,
             })
@@ -289,7 +296,7 @@ client.on('messageCreate', async (message) => {
     }
 
     if (command === 'testMatch') {
-        const groups = await getNewGroups({ guild, config, collection, roles })
+        const groups = await getNewGroups({ guild, config, roles, supabase })
         console.log('Groups: ')
         console.log(groups)
         deleteMatchingChannels({ guild, config })
@@ -315,7 +322,7 @@ client.on('messageCreate', async (message) => {
             guild,
             config,
             roles,
-            collection,
+            supabase,
             dayOfWeek,
         })
         await message.channel.send(`Deleted previous matched channels! ✅`)

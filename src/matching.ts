@@ -1,5 +1,4 @@
 import { Guild } from 'discord.js'
-import { Collection } from 'mongodb'
 import { Config } from './configType'
 import {
     createPrivateChannels,
@@ -9,9 +8,10 @@ import { getParticipatingUserIDs } from './discord/participatingUserIDs'
 import {
     getHistoricalPairs,
     setHistoricalPairs,
-} from './mongoDB/historicalPairs'
+} from './database/historicalPairs'
 import { fischerYatesShuffle } from './utils/fischerYatesShuffle'
 import { getCurrentDateFormatted } from './utils/getCurrentDateFormatted'
+import { SupabaseClient } from '@supabase/supabase-js'
 
 type matchingHelperArgs = {
     participatingUserIDs: Set<string>
@@ -98,13 +98,13 @@ type getNewGroupsArgs = {
     guild: Guild
     config: Config
     roles: string[]
-    collection: Collection
+    supabase: SupabaseClient
 }
 export async function getNewGroups({
     guild,
     config,
     roles,
-    collection,
+    supabase,
 }: getNewGroupsArgs): Promise<[string[]]> {
     const participatingUserIDs = await getParticipatingUserIDs({
         config,
@@ -113,7 +113,7 @@ export async function getNewGroups({
     })
     const historicalPairs = await getHistoricalPairs({
         userIDs: participatingUserIDs,
-        collection,
+        supabase,
     })
     // Can use simple data below for basic testing until getParticipatingUserIDs() is implemented
     // let participatingUserIDs = ['0', '1', '2', '3', '4', '5']
@@ -191,14 +191,14 @@ type matchUsersArgs = {
     guild?: Guild
     config: Config
     roles: string[]
-    collection: Collection
+    supabase: SupabaseClient
     dayOfWeek: number
 }
 export async function matchUsers({
     guild,
     config,
     roles,
-    collection,
+    supabase,
     dayOfWeek,
 }: matchUsersArgs): Promise<void> {
     if (!guild) return
@@ -208,14 +208,15 @@ export async function matchUsers({
     const groups = await getNewGroups({
         guild,
         config,
-        collection,
+        supabase,
         roles,
     })
     console.log('Groups: ')
     console.log(groups)
     await setHistoricalPairs({
-        collection,
         pairs: groups,
+        guildID: guild.id,
+        supabase,
     })
     await deleteMatchingChannels({
         guild,
