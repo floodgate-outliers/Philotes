@@ -1,4 +1,4 @@
-import { Client, Intents, Guild, TextChannel } from 'discord.js'
+import { Client, Intents, Guild } from 'discord.js'
 import cron, { CronJob } from 'cron'
 import { createClient } from '@supabase/supabase-js'
 
@@ -10,12 +10,13 @@ import {
 import getCronJob from './cron/cronJob'
 import { getDayOfWeekString } from './utils/dayOfWeekTranslation'
 import { getMatchingTimeFormatted } from './utils/getMatchingTimeFormatted'
+import { createBotCommunicationChannel } from './discord/onboarding'
 import { Config } from './configType'
 import type { Guilds } from './database/types'
 require('dotenv').config({ path: `.env.${process.env.NODE_ENV}` })
 
 const config: Config = {
-    prefix: process.env.PREFIX as string,
+    prefix: process.env.COMMAND_PREFIX as string,
     botCommunicationChannelID: process.env
         .BOT_COMMUNICATION_CHANNEL_ID as string,
     guildID: process.env.GUILD_ID as string,
@@ -36,6 +37,8 @@ const client = new Client({
 })
 
 const supabase = createClient(config.supabaseApiUrl, config.supabaseApiKey)
+const BotCommunicationChannelCategory = 'Matching-Bot-Philotes'
+const BotCommunicationChannelName = 'Matching-Bot-Communication'
 
 let botStatus = 'init'
 // Default to Tuesday, note days are 0 indexed (Sunday = 0)
@@ -49,6 +52,7 @@ let minute = 0
 let matchingJob: cron.CronJob | undefined
 let groupSize = 2
 let roles: string[] = []
+let botId: string
 
 async function supabaseTest(): Promise<void> {
     const { data, error } = await supabase.from('guilds').select('*')
@@ -76,58 +80,87 @@ function getCronJobHelper(guild: Guild): CronJob {
 
 client.on('ready', async () => {
     console.log(`Logged in as ${client.user?.tag}!`)
+    if (client.user) {
+        botId = client.user.id
+    }
+
+    console.log('test ready')
 })
 
 client.on('guildCreate', async (guild) => {
     if (!client) return
-    // Get the first text channel where the bot is allowed to send messages
-    const channelToFetch = guild.channels.cache.find((channel) =>
-        channel.type === 'GUILD_TEXT' &&
-        channel.permissionsFor(client.user?.id || '')?.has('SEND_MESSAGES')
-            ? true
-            : false
-    )
-    if (!channelToFetch) return
-    // Get the channel and send the message
-    const firstChannel = client.channels.cache.get(
-        channelToFetch.id
-    ) as TextChannel
-    await firstChannel.send(
-        `Hello! This is my first message. I see that your guild Id is ${guild.id}`
-    )
-    // TODO: save info about guild in guild_registry on supabase
-    const { data, error } = await supabase
-        .from<Guilds>('guilds')
-        .insert({ guild_id: Number(guild.id) })
 
-    console.log(error)
-    console.log(data)
+    // Onboarding:
+    // 1. Create new bot communication channel
+    // 2. Text: This is how the bot works
+    // 3. Text: Invite new members to the channel to be able to control the bot
+    // 4. Text: Before you begin: set a matching role
+    // 5. Text: You can always ask for help /help or check the current status of the bot /status
+    const channelId = await createBotCommunicationChannel({
+        guild,
+        botId,
+        BotCommunicationChannelCategory,
+        BotCommunicationChannelName,
+    })
+
+    const { error } = await supabase.from<Guilds>('guilds').insert({
+        guild_id: guild.id,
+        bot_communication_channel_id: channelId,
+    })
+
+    if (error) {
+        console.log('Guild ID: ', guild.id, 'Error: ', error)
+    }
 })
 
 client.on('messageCreate', async (message) => {
     // TODO: check if the the config fields for the message.guild have been loaded from Supabase
+    const { data, error } = await supabase
+        .from<Guilds>('guilds')
+        .select()
+        .eq('guild_id', message.guildId as string)
+
+    console.log('#!@#!@#')
+    console.log('guild id message: ', message.guildId, message.guild?.id)
+    console.log(data)
+    let guildData
+    if (data && data.length > 0) {
+        guildData = data[0]
+        console.log('####')
+        console.log(guildData)
+    }
+
+    if (error) {
+        console.log("Can't find guild from which message was sent")
+    }
 
     const guild = client.guilds.cache.get(message.guildId || '')
     if (!guild) {
         return
     }
 
+    console.log(message)
+
     // if the author is another bot OR the command is not in the bot communications channel OR the command doesn't start with the correct prefix => ignore
     if (
         message.author.bot ||
-        // TODO: Get the channelID for the given message.guild
-        message.channelId !== config.botCommunicationChannelID ||
+        message.channelId !== guildData.bot_communication_channel_id ||
         message.content.indexOf(config.prefix) !== 0
     )
         return
 
+    // console.log(message.content)
     // extract command and arguments from message
     const input = message.content
         .slice(config.prefix.length)
         .trim()
         .split(/ +/g)
+    // const command = input.shift()
     const command = input.shift()
     const args = input.join(' ')
+
+    console.log(command)
+    console.log(args)
 
     // log command and arg on console (for debugging)
     console.log('Command: ', command)
@@ -328,6 +361,16 @@ client.on('messageCreate', async (message) => {
         await message.channel.send(`Deleted previous matched channels! ✅`)
         await message.channel.send(`New matches created! ✅`)
         await message.channel.send(`---⚡🦎---`)
+    }
+
+    if (command === 'test') {
+        message.channel.send('test')
+        createBotCommunicationChannel({
+            guild,
+            botId,
+            BotCommunicationChannelCategory,
+            BotCommunicationChannelName,
+        })
     }
 
     // if (command === 'datesForMonth') {
