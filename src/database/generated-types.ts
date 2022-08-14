@@ -114,6 +114,7 @@ export interface paths {
                     matching_roles?: parameters['rowFilter.guilds.matching_roles']
                     bot_communication_channel_id?: parameters['rowFilter.guilds.bot_communication_channel_id']
                     active?: parameters['rowFilter.guilds.active']
+                    blacklist?: parameters['rowFilter.guilds.blacklist']
                     /** Filtering Columns */
                     select?: parameters['select']
                     /** Ordering */
@@ -169,6 +170,7 @@ export interface paths {
                     matching_roles?: parameters['rowFilter.guilds.matching_roles']
                     bot_communication_channel_id?: parameters['rowFilter.guilds.bot_communication_channel_id']
                     active?: parameters['rowFilter.guilds.active']
+                    blacklist?: parameters['rowFilter.guilds.blacklist']
                 }
                 header: {
                     /** Preference */
@@ -188,6 +190,7 @@ export interface paths {
                     matching_roles?: parameters['rowFilter.guilds.matching_roles']
                     bot_communication_channel_id?: parameters['rowFilter.guilds.bot_communication_channel_id']
                     active?: parameters['rowFilter.guilds.active']
+                    blacklist?: parameters['rowFilter.guilds.blacklist']
                 }
                 body: {
                     /** guilds */
@@ -336,12 +339,14 @@ export interface definitions {
          * @default now()
          */
         created_at?: string
-        /** Format: text */
-        matching_roles?: string
+        /** Format: ARRAY */
+        matching_roles?: unknown[]
         /** Format: text */
         bot_communication_channel_id: string
-        /** Format: smallint */
-        active?: number
+        /** Format: boolean */
+        active: boolean
+        /** Format: ARRAY */
+        blacklist?: unknown[]
     }
     matches: {
         /**
@@ -410,12 +415,14 @@ export interface parameters {
     'rowFilter.guilds.guild_id': string
     /** Format: timestamp with time zone */
     'rowFilter.guilds.created_at': string
-    /** Format: text */
+    /** Format: ARRAY */
     'rowFilter.guilds.matching_roles': string
     /** Format: text */
     'rowFilter.guilds.bot_communication_channel_id': string
-    /** Format: smallint */
+    /** Format: boolean */
     'rowFilter.guilds.active': string
+    /** Format: ARRAY */
+    'rowFilter.guilds.blacklist': string
     /** @description matches */
     'body.matches': definitions['matches']
     /** Format: bigint */

@@ -11,51 +11,50 @@ import { Guild } from 'discord.js'
 type createBotCommunicationChannelArgs = {
     guild: Guild
     botId: string
-    BotCommunicationChannelCategory: string
+    BotChannelCategory: string
     BotCommunicationChannelName: string
 }
 export async function createBotCommunicationChannel({
     guild,
     botId,
-    BotCommunicationChannelCategory,
+    BotChannelCategory,
     BotCommunicationChannelName,
 }: createBotCommunicationChannelArgs): Promise<string> {
     let channelCategory
 
-    if (!guild) throw Error('Guild not defined')
+    if (!guild) return ''
     // Get the category to place the channel under
     channelCategory = guild.channels.cache.find(
-        (c) =>
-            c.type === 'GUILD_CATEGORY' &&
-            c.name === BotCommunicationChannelCategory
+        (c) => c.type === 'GUILD_CATEGORY' && c.name === BotChannelCategory
     )
 
     if (!channelCategory) {
-        channelCategory = await guild.channels.create(
-            BotCommunicationChannelCategory,
-            {
-                type: 'GUILD_CATEGORY',
-            }
-        )
+        channelCategory = await guild.channels.create(BotChannelCategory, {
+            type: 'GUILD_CATEGORY',
+        })
+
+        console.log(channelCategory)
     }
+
+    // await channelCategory.permissionOverwrites.create(botId, {
+    //     ViewChannel: true,
+    // })
+    // channel.permissionOverwrites.create(channel.guild.roles.everyone, { ViewChannel: false });
 
     const channel = await guild.channels.create(BotCommunicationChannelName, {
         parent: channelCategory.id,
         position: 1,
         permissionOverwrites: [
             {
-                id: guild.roles.everyone,
-                deny: ['VIEW_CHANNEL'],
-            },
-            {
                 id: botId,
                 allow: ['SEND_MESSAGES', 'VIEW_CHANNEL'],
             },
+            {
+                id: guild.roles.everyone,
+                deny: ['VIEW_CHANNEL'],
+            },
         ],
     })
-    channel.send(
-        `Hey 👋, This is the channel to communicate with the bot communications bot. `
-    )
 
     return channel.id
 }
