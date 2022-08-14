@@ -70,9 +70,9 @@ export async function setHistoricalPairs({
     for (const pair of pairs) {
         const obj: Matches = {
             id: uuidv4(),
-            guild_id: Number(guildID),
-            user1_id: Number(pair[0]),
-            user2_id: Number(pair[1]),
+            guild_id: guildID,
+            user1_id: pair[0],
+            user2_id: pair[1],
             created_at: new Date().toUTCString(),
             matching_round: numLatestMatchingRound + 1,
         }
