@@ -3,14 +3,16 @@
     "version": "1.0.0",
     "main": "./dist/src/main.js",
     "license": "MIT",
+    "engines": {
+        "node": ">=16.6.0"
+    },
     "scripts": {
-        "build": "rimraf dist && tsc",
-        "start": "rimraf dist && tsc && node ./dist/src/main.js",
+        "build": "rm -rf dist && yarn && tsc",
+        "start": "tsc && node ./dist/src/main.js",
         "debug": "NODE_ENV=development nodemon ./src/main.ts",
         "lint": "eslint . --ext .ts",
         "test": "jest",
-        "tsc": "./node_modules/typescript/bin/tsc",
-        "postinstall": "npm run build"
+        "tsc": "./node_modules/typescript/bin/tsc"
     },
     "dependencies": {
         "@supabase/supabase-js": "^1.35.6",
