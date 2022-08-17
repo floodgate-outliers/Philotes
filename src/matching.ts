@@ -194,9 +194,8 @@ type matchUsersArgs = {
     roles: string[]
     blacklist: string[]
     matchingChannelName: string
-    botChannelsCategoryName: string
+    botChannelCategory: string
     supabase: SupabaseClient
-    dayOfWeek: number
 }
 export async function matchUsers({
     botId,
@@ -204,9 +203,8 @@ export async function matchUsers({
     roles,
     blacklist,
     matchingChannelName,
-    botChannelsCategoryName,
+    botChannelCategory,
     supabase,
-    dayOfWeek,
 }: matchUsersArgs): Promise<void> {
     if (!guild) return
     console.log(
@@ -234,8 +232,7 @@ export async function matchUsers({
         botId,
         userIDGroups: groups,
         guild,
-        botChannelsCategoryName,
+        botChannelCategory,
         matchingChannelName,
-        dayOfWeek,
     })
 }

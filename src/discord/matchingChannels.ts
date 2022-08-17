@@ -13,22 +13,20 @@ type createPrivateChannelsArgs = {
     botId: string
     userIDGroups: [string[]]
     guild: Guild
-    botChannelsCategoryName: string
+    botChannelCategory: string
     matchingChannelName: string
-    dayOfWeek: number
 }
 export async function createPrivateChannels({
     botId,
     userIDGroups,
     guild,
-    botChannelsCategoryName,
+    botChannelCategory,
     matchingChannelName,
-    dayOfWeek,
 }: createPrivateChannelsArgs): Promise<void> {
     if (!guild) return
     // Get the category to place the channel under
     const channelCategory = guild.channels.cache.find(
-        (c) => c.type === 'GUILD_CATEGORY' && c.name === botChannelsCategoryName
+        (c) => c.type === 'GUILD_CATEGORY' && c.name === botChannelCategory
     )
 
     if (!channelCategory) throw Error('Matching category not found in Guild')
@@ -68,9 +66,7 @@ export async function createPrivateChannels({
             channel.send(`Hey ${userIDTag} 👋,
             You have been matched!
             Schedule a call, go for a walk or do whatever else.
-            The channel will automatically be closed next ${getDayOfWeekString(
-                dayOfWeek
-            )}.
+            The channel will automatically be closed when the next round of matches begin.
                   `)
         } catch (error) {
             console.log('error creating channel:', error)
