@@ -24,13 +24,13 @@ export async function matchOnceHandler({
 }: MatchOnceHandlerArgs) {
     const roles = guildData.matching_roles as string[]
     const blacklist = guildData.blacklist as string[]
+    // check if roles are set
     if (!guildData.matching_roles || guildData.matching_roles.length === 0) {
         await message.channel.send(
-            'No matches will be made since not roles have been set. Run the command: /setRole <Role1>, <Role2>, <Role3>,...'
+            'No matches will be made since not roles have been set. Run the command: /setRoles <Role1>, <Role2>, <Role3>,...'
         )
         return
     }
-    // check if roles are set
     await matchUsers({
         botId,
         guild,

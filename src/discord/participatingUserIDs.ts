@@ -20,10 +20,13 @@ export async function getParticipatingUserIDs({
     try {
         await guild.members.fetch()
         const participatingUserIDs: Set<string> = new Set()
+        console.log('roles: ', roles)
         for (const roleName of roles) {
             const roleData = guild.roles.cache.find(
                 (role) => role.name == roleName
             )
+            console.log('roleName: ', roleName)
+
             if (!roleData) continue
             const filteredUsersWithRole = roleData.members
                 .filter((m) => !blacklist.includes(m.user.username))

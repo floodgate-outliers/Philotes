@@ -43,6 +43,8 @@ export async function guildCreateHandler({
         BotCommunicationChannelName: botCommunicationChannelName,
     })
 
+    let sendDeltePrevChannelMessage = false
+
     if (data && data.length == 0) {
         // Guild is not in database
         const { error: errorInsertGuild } = await supabase
@@ -76,9 +78,7 @@ export async function guildCreateHandler({
             return
         }
         const BotChannel = client.channels.cache.get(channelId) as TextChannel
-        BotChannel.send(
-            `Hey 👋, glad to have you back. PLease delete the old channel to avoid confusion for users communicating with the bot. The old won't work anymore.`
-        )
+        sendDeltePrevChannelMessage = true
     }
 
     // Fetch guild and continue normal onboarding flow
@@ -110,16 +110,26 @@ export async function guildCreateHandler({
             guildData.bot_communication_channel_id
         ) as TextChannel
 
-        BotChannel.send(
-            `Hey 👋, This is the channel to communicate with the bot communications bot. 
-          Options <>
-          BlaBla`
-        )
-        BotChannel.send(
-            `As a first step please set a matching role with the command: /setRole <Role>.`
-        )
-        BotChannel.send(
-            `All users who have that role will be included in the next matching round.`
+        await BotChannel.send(
+            `${
+                sendDeltePrevChannelMessage
+                    ? `Hey, glad to have you back!
+Please delete the old #${botCommunicationChannelName} channel to avoid confusion for users communicating with the bot.
+The old won't work anymore.\n\n`
+                    : ''
+            }
+Hey 👋, This is the channel to communicate with the bot communications bot.
+You will be able to send commands here to control the matching process.
+You can see a list of all supported commands with the command: /help.\n\n
+Quick Start:\n
+1. Set role(s) that you would like matched with the command: /setRoles <Role1>, <Role2>, <Role3>,...
+All users with this role(s) will be matched in the next round.\n
+2. Begin the first round of matches immediately with the command: /matchOnce.\n
+    
+*Note: if anything goes wrong, you can delte all matched channels with the command: /deleteChannels.
+    
+---⚡🦎---
+                `
         )
     }
 }

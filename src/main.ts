@@ -1,4 +1,4 @@
-import { Client, Intents } from 'discord.js'
+import { Client, Intents, TextChannel } from 'discord.js'
 import { createClient } from '@supabase/supabase-js'
 
 import { Config } from './configType'
@@ -73,6 +73,10 @@ client.on('messageCreate', async (message) => {
         )
         return
     }
+
+    const BotChannel = client.channels.cache.get(
+        guildData.bot_communication_channel_id
+    ) as TextChannel
 
     // if the author is another bot OR the command is not in the bot communications channel OR the command doesn't start with the correct prefix => ignore
     if (

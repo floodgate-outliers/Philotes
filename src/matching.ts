@@ -112,6 +112,7 @@ export async function getNewGroups({
         roles,
         blacklist,
     })
+    console.log('participatingUserIDs...', participatingUserIDs)
     const historicalPairs = await getHistoricalPairs({
         userIDs: participatingUserIDs,
         supabase,

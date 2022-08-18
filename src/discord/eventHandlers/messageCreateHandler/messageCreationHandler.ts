@@ -33,32 +33,24 @@ export async function messageCreateHandler({
 }: MessageCreateHandlerArgs) {
     if (command === 'alive') {
         await message.channel.send('Alive')
-    }
-
-    if (command === 'help') {
+    } else if (command === 'help') {
         await helpCommandHandler({
             message,
             botChannelCategory,
         })
-    }
-
-    if (command === 'status') {
+    } else if (command === 'status') {
         await statusCommandHandler({
             message,
             guildData,
         })
-    }
-
-    if (command === 'setRoles') {
+    } else if (command === 'setRoles') {
         await setRolesCommandHandler({
             args,
             guild,
             message,
             supabase,
         })
-    }
-
-    if (command === 'setBlacklist') {
+    } else if (command === 'setBlacklist') {
         await setBlacklistHandler({
             args,
             guild,
@@ -66,17 +58,13 @@ export async function messageCreateHandler({
             message,
             supabase,
         })
-    }
-
-    if (command === 'deleteChannels') {
+    } else if (command === 'deleteChannels') {
         await deleteChannelsHandler({
             botMatchingChannelName,
             guild,
             message,
         })
-    }
-
-    if (command === 'matchOnce') {
+    } else if (command === 'matchOnce') {
         await matchOnceHandler({
             botChannelCategory,
             botId,
@@ -86,5 +74,7 @@ export async function messageCreateHandler({
             message,
             supabase,
         })
+    } else {
+        message.reply(`Command "${command}" does not exist`)
     }
 }
