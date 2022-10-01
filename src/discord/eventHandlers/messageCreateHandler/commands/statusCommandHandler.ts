@@ -13,7 +13,7 @@ export async function statusCommandHandler({
     await message.channel.send(
         `Roles: ${JSON.stringify(guildData.matching_roles)}`
     )
-    await message.channel.send(
-        `Blacklist: ${JSON.stringify(guildData.blacklist)}`
-    )
+    // await message.channel.send(
+    //     `Blacklist: ${JSON.stringify(guildData.blacklist)}`
+    // )
 }

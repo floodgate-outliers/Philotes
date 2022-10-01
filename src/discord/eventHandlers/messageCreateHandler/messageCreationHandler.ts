@@ -50,14 +50,14 @@ export async function messageCreateHandler({
             message,
             supabase,
         })
-    } else if (command === 'setBlacklist') {
-        await setBlacklistHandler({
-            args,
-            guild,
-            guildData,
-            message,
-            supabase,
-        })
+        // } else if (command === 'setBlacklist') {
+        //     await setBlacklistHandler({
+        //         args,
+        //         guild,
+        //         guildData,
+        //         message,
+        //         supabase,
+        //     })
     } else if (command === 'deleteChannels') {
         await deleteChannelsHandler({
             botMatchingChannelName,
