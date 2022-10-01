@@ -64,9 +64,9 @@ export async function createPrivateChannels({
                 .map((userID) => `<@${userID}>`)
                 .join(' ')
             channel.send(`Hey ${userIDTag} 👋,
-            You have been matched!
-            Schedule a call, go for a walk or do whatever else.
-            The channel will automatically be closed when the next round of matches begin.
+You have been matched!
+Schedule a call, go for a walk or do whatever else.
+The channel will automatically be closed when the next round of matches begin.
                   `)
         } catch (error) {
             console.log('error creating channel:', error)

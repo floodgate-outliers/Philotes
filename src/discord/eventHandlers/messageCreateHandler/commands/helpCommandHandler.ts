@@ -12,7 +12,7 @@ export async function helpCommandHandler({
     console.log('---help---')
     await message.channel.send('Available commands:')
     await message.channel.send(
-        '/setRoles <name of role1> <name of role2> <name of role3> ... => members of which role should be included in the matching process'
+        '/setRoles <name of role1>,<name of role2>,<name of role3> ... => members of which role should be included in the matching process'
     )
     await message.channel.send('/status => get current status of the bot')
     await message.channel.send(
