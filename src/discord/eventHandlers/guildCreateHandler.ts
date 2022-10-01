@@ -115,19 +115,31 @@ export async function guildCreateHandler({
                 sendDeletePrevChannelMessage
                     ? `Hey, glad to have you back!
 Please delete the old #${botCommunicationChannelName} channel to avoid confusion for users communicating with the bot.
-The old won't work anymore.\n\n`
+The old won't work anymore.\n`
                     : ''
             }
-Hey 👋, This is the channel to communicate with the bot communications bot.
-You will be able to send commands here to control the matching process.
-You can see a list of all supported commands with the command: /help.\n\n
-Quick Start:\n
-1. Set role(s) that you would like matched with the command: /setRoles <Role1>, <Role2>, <Role3>,...
-All users with this role(s) will be matched in the next round.\n
-2. Begin the first round of matches immediately with the command: /matchOnce.\n
-    
-*Note: if anything goes wrong, you can delte all matched channels with the command: /deleteChannels.
-    
+Hey 👋, This is the channel to communicate with the Philotes (greek: friendship) matching bot. 
+The Philotes matching bot allows you to create 1 on 1 matches between members of your community. 
+You will be able to send commands here to control the matching process between your members. \n
+
+❗ **Who can control the bot?**
+By default all server admins have access to that channel and can control the bot.
+If you want to give other members permission to control the bot just add or remove them from this channel. \n
+
+🏃 **Quick Start**
+1. Set role(s) that you would like matched with the command: /setRoles <Role1>, <Role2>, <Role3>
+Example: \`/setRoles Ethereum-Core, Ethereum-Dev\`
+Explanation: all users with role \`Ethereum-Core\` and \`Ethereum-Dev\` will be matched in the next round.\n
+2. Begin the first round of matches immediately with the command: /matchOnce.
+Example: \`/matchOnce\`
+Explanation: a new matching round is stated: old matching channels are deleted and new channels are created \n
+3. If anything goes wrong, you can delte all matched channels with the command: \`/deleteChannels\`.\n
+
+*You can see a list of all supported commands with the command: \`/help\`.\n
+
+💭 **Bugs or Feedback?**
+Shoot us a message at: https://twitter.com/outlierdao
+
 ---⚡🦎---
                 `
         )
