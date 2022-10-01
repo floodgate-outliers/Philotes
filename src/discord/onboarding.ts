@@ -20,11 +20,9 @@ export async function createBotCommunicationChannel({
     BotChannelCategory,
     BotCommunicationChannelName,
 }: createBotCommunicationChannelArgs): Promise<string> {
-    let channelCategory
-
     if (!guild) return ''
     // Get the category to place the channel under
-    channelCategory = guild.channels.cache.find(
+    let channelCategory = guild.channels.cache.find(
         (c) => c.type === 'GUILD_CATEGORY' && c.name === BotChannelCategory
     )
 
