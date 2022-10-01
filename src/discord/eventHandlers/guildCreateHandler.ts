@@ -43,7 +43,7 @@ export async function guildCreateHandler({
         BotCommunicationChannelName: botCommunicationChannelName,
     })
 
-    let sendDeltePrevChannelMessage = false
+    let sendDeletePrevChannelMessage = false
 
     if (data && data.length == 0) {
         // Guild is not in database
@@ -78,7 +78,7 @@ export async function guildCreateHandler({
             return
         }
         const BotChannel = client.channels.cache.get(channelId) as TextChannel
-        sendDeltePrevChannelMessage = true
+        sendDeletePrevChannelMessage = true
     }
 
     // Fetch guild and continue normal onboarding flow
@@ -112,7 +112,7 @@ export async function guildCreateHandler({
 
         await BotChannel.send(
             `${
-                sendDeltePrevChannelMessage
+                sendDeletePrevChannelMessage
                     ? `Hey, glad to have you back!
 Please delete the old #${botCommunicationChannelName} channel to avoid confusion for users communicating with the bot.
 The old won't work anymore.\n\n`
